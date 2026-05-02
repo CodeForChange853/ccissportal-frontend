@@ -8,7 +8,7 @@ export default defineConfig({
     proxy: {
       // This forwards frontend API calls to your FastAPI backend
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'https://ccissportal-backend.onrender.com',
         changeOrigin: true,
       }
     }
