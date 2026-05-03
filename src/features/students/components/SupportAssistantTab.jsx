@@ -76,6 +76,7 @@ const SupportAssistantTab = () => {
                     <input 
                         type="text"
                         required
+                        maxLength={150}
                         value={subject}
                         onChange={e => setSubject(e.target.value)}
                         placeholder="e.g. Cannot view my grades for last semester"
@@ -89,6 +90,7 @@ const SupportAssistantTab = () => {
                     </label>
                     <textarea 
                         required
+                        maxLength={300}
                         value={description}
                         onChange={e => setDescription(e.target.value)}
                         placeholder="Please provide as much detail as possible so the AI can accurately extract keywords and route your context..."
