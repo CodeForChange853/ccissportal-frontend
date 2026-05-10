@@ -16,10 +16,11 @@ export const computeGWA = (grades = []) => {
 export const gwaLabel = (gwa) => {
     if (!gwa) return { label: '—', color: 'var(--student-white-dim)' };
     const v = parseFloat(gwa);
-    if (v <= 1.5) return { label: 'Excellent', color: 'var(--student-gold-2)' };
-    if (v <= 2.5) return { label: 'Good', color: 'var(--student-gold-3)' };
-    if (v <= 3.0) return { label: 'Average', color: 'var(--student-white-dim)' };
-    return { label: 'Needs Work', color: 'var(--student-red)' };
+    if (v <= 1.25) return { label: 'Summa Cum Laude', color: 'var(--student-gold)' };
+    if (v <= 1.50) return { label: 'Magna Cum Laude', color: 'var(--student-gold-2)' };
+    if (v <= 1.75) return { label: 'Cum Laude', color: 'var(--student-gold-3)' };
+    if (v <= 3.00) return { label: 'Good Standing', color: 'var(--student-white-dim)' };
+    return { label: 'Needs Attention', color: 'var(--student-red)' };
 };
 
 const Spark = ({ data = [], color = '#C9A84C', height = 60 }) => {
