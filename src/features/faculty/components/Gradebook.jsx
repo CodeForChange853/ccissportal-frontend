@@ -133,7 +133,7 @@ const Gradebook = ({ subject }) => {
             quizzes.push({ score: rec[`quiz_${i}_score`], total: rec[`quiz_${i}_total`] });
         await saveGradeLocally({ ...rec, subject_code: subject.code });
         await addToSyncQueue({
-            student_id: rec.student_id, subject_code: subject.code,
+            student_account_id: rec.student_account_id, subject_code: subject.code,
             raw_score_data: { ...(rec.raw_score_data || {}), quiz_count: quizCount, quizzes, quiz_score: rec.quiz_1_score, quiz_total: rec.quiz_1_total },
             system_grade: parseFloat(rec.system_grade || 0),
             final_grade: parseFloat(rec.final_grade || 0),
