@@ -222,15 +222,20 @@ const SupportAssistantTab = () => {
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                         {tickets.map(t => {
-                            const sc = STATUS_CFG[t.status] ?? { label: t.status, color: '#94a3b8', bg: 'rgba(255,255,255,0.05)', border: 'rgba(255,255,255,0.1)' };
+                            const id = t.ticket_id ?? t.id;
+                            const status = t.ticket_status ?? t.status;
+                            const description = t.issue_description ?? t.description;
+                            const category = t.ai_predicted_category ?? t.category;
+                            
+                            const sc = STATUS_CFG[status] ?? { label: status, color: '#94a3b8', bg: 'rgba(255,255,255,0.05)', border: 'rgba(255,255,255,0.1)' };
                             return (
                                 <div
-                                    key={t.id}
+                                    key={id}
                                     style={{ ...CARD, padding: 20, transition: 'border-color 0.2s' }}
                                 >
                                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
                                         <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--student-white)', lineHeight: 1.5, flex: 1 }}>
-                                            {t.description}
+                                            {description}
                                         </p>
                                         <span style={{
                                             flexShrink: 0, padding: '3px 10px', borderRadius: 20,
@@ -242,15 +247,15 @@ const SupportAssistantTab = () => {
 
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: t.ai_response ? 12 : 0 }}>
                                         <span style={{ fontSize: 10, color: 'rgba(245,240,232,0.35)', fontFamily: 'var(--student-font-mono)', fontWeight: 700 }}>
-                                            REF: {t.id}
+                                            REF: {id}
                                         </span>
-                                        {t.category && (
+                                        {category && (
                                             <span style={{
                                                 fontSize: 10, color: 'rgba(201,168,76,0.6)',
                                                 background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(201,168,76,0.1)',
                                                 padding: '2px 8px', borderRadius: 6, fontFamily: 'var(--student-font-mono)',
                                             }}>
-                                                {CATEGORY_ICON[t.category] ?? '📁'} {t.category.toUpperCase()}
+                                                {CATEGORY_ICON[category] ?? '📁'} {category.toUpperCase()}
                                             </span>
                                         )}
                                         {t.confidence_score != null && (

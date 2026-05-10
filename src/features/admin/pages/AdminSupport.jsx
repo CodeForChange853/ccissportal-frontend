@@ -131,16 +131,35 @@ const AdminSupport = () => {
     const [resolving, setResolving] = useState(null);
     const [rerouteModal, setRerouteModal] = useState(null);
     const [rerouting, setRerouting] = useState(false);
+    const [isRetraining, setIsRetraining] = useState(false);
+
+    const load = async () => {
+        setLoading(true);
+        try { setTickets((await adminApi.fetchAllTickets()) ?? []); }
+        catch { toast.error('Failed to load tickets.'); }
+        finally { setLoading(false); }
+    };
 
     useEffect(() => {
-        const load = async () => {
-            setLoading(true);
-            try { setTickets((await adminApi.fetchAllTickets()) ?? []); }
-            catch { toast.error('Failed to load tickets.'); }
-            finally { setLoading(false); }
-        };
         load();
     }, [refreshTick]);
+
+    const handleRetrain = async () => {
+        if (!window.confirm("Trigger AI model retraining? This will use all currently resolved and corrected tickets to improve accuracy.")) return;
+        setIsRetraining(true);
+        try {
+            const res = await adminApi.retrainTriageModel();
+            if (res.status === 'SUCCESS') {
+                toast.success(`AI Model retrained successfully on ${res.trained_on} samples.`);
+            } else {
+                toast.warning(res.reason || "Retraining skipped (need more resolved tickets).");
+            }
+        } catch {
+            toast.error("Failed to trigger model retraining.");
+        } finally {
+            setIsRetraining(false);
+        }
+    };
 
     const deptStats = useMemo(() => {
         const s = {};
@@ -198,7 +217,16 @@ const AdminSupport = () => {
             <PageHeader
                 title="Support Triage Center"
                 subtitle="AI-routed tickets by department — resolve or re-route to the correct queue."
-            />
+            >
+                <button
+                    className="btn-ghost"
+                    style={{ fontSize: '0.62rem', letterSpacing: '0.05em' }}
+                    onClick={handleRetrain}
+                    disabled={isRetraining}
+                >
+                    {isRetraining ? 'TRAINING...' : 'RETRAIN AI MODEL'}
+                </button>
+            </PageHeader>
 
             {/* Global KPI strip */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
