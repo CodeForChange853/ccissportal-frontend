@@ -217,16 +217,17 @@ const AdminSupport = () => {
             <PageHeader
                 title="Support Triage Center"
                 subtitle="AI-routed tickets by department — resolve or re-route to the correct queue."
-            >
-                <button
-                    className="btn-ghost"
-                    style={{ fontSize: '0.62rem', letterSpacing: '0.05em' }}
-                    onClick={handleRetrain}
-                    disabled={isRetraining}
-                >
-                    {isRetraining ? 'TRAINING...' : 'RETRAIN AI MODEL'}
-                </button>
-            </PageHeader>
+                badge={
+                    <button
+                        className="btn-ghost"
+                        style={{ fontSize: '0.62rem', letterSpacing: '0.05em' }}
+                        onClick={handleRetrain}
+                        disabled={isRetraining}
+                    >
+                        {isRetraining ? 'TRAINING...' : 'RETRAIN AI MODEL'}
+                    </button>
+                }
+            />
 
             {/* Global KPI strip */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
