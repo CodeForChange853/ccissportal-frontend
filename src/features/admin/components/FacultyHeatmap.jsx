@@ -1,25 +1,4 @@
-// frontend/src/features/admin/components/FacultyHeatmap.jsx
-//
-// Renders a color-coded grid where each cell = one faculty member.
-// Color encodes load severity at a glance — no numbers needed:
-//
-//   🟢 AVAILABLE  — 0–50% of max load    (green)
-//   🟡 MODERATE   — 51–75% of max load   (yellow)
-//   🟠 HIGH       — 76–99% of max load   (amber/orange)
-//   🔴 MAXED OUT  — 100% of max load     (red)
-//   ⬜ INACTIVE   — is_available = false  (slate/muted)
-//
-// Props:
-//   faculty — array from GET /admin/faculty
-//             Each item: { account_id, email_address, first_name, last_name,
-//                          academic_department, current_teaching_load,
-//                          maximum_teaching_load, is_available_for_classes }
-//   onSelect — optional callback(faculty) when a cell is clicked
-
 import React, { useState } from 'react';
-
-// ── Color logic ───────────────────────────────────────────────────────────────
-
 const getLoadTier = (current, max, isAvailable) => {
     if (!isAvailable) return 'inactive';
     if (max === 0) return 'available';
@@ -78,15 +57,21 @@ const LEGEND = [
     { tier: 'inactive', label: 'Inactive' },
 ];
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// ── Component 
 
 const FacultyHeatmap = ({ faculty = [], onSelect }) => {
     const [hoveredId, setHoveredId] = useState(null);
 
     if (faculty.length === 0) {
         return (
-            <div className="text-center py-12 text-slate-500 font-mono text-xs">
-                NO FACULTY PROFILES FOUND
+            <div style={{
+                padding: '48px 0', textAlign: 'center',
+                background: 'var(--bg-depth)', borderRadius: 16,
+                border: '1px solid var(--border-default)'
+            }}>
+                <p style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.7rem', color: 'var(--text-muted)', letterSpacing: '0.1em' }}>
+                    NO FACULTY PROFILES DETECTED
+                </p>
             </div>
         );
     }
@@ -99,61 +84,61 @@ const FacultyHeatmap = ({ faculty = [], onSelect }) => {
         return acc;
     }, {});
 
-    // Summary counts for the header
-    const maxedCount = faculty.filter(f => getLoadTier(f.current_teaching_load, f.maximum_teaching_load, f.is_available_for_classes) === 'maxed').length;
-    const availableCount = faculty.filter(f => getLoadTier(f.current_teaching_load, f.maximum_teaching_load, f.is_available_for_classes) === 'available').length;
-
     return (
-        <div className="space-y-5">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
-            {/* ── Summary bar ───────────────────────────────────────────────── */}
-            <div className="flex items-center justify-between">
-                <div className="flex gap-6 text-xs font-mono">
-                    <span className="text-slate-400">
-                        Total: <span className="text-white font-bold">{faculty.length}</span>
-                    </span>
-                    <span className="text-emerald-400">
-                        Available: <span className="font-bold">{availableCount}</span>
-                    </span>
-                    <span className="text-rose-400">
-                        Maxed: <span className="font-bold">{maxedCount}</span>
-                    </span>
-                </div>
-
-                {/* Legend */}
-                <div className="flex items-center gap-3">
-                    {LEGEND.map(({ tier, label }) => (
-                        <div key={tier} className="flex items-center gap-1.5">
-                            <span className={`w-2.5 h-2.5 rounded-sm ${TIER_STYLES[tier].dot}`} />
-                            <span className="text-[10px] text-slate-500 font-mono hidden lg:block">
-                                {label}
-                            </span>
-                        </div>
-                    ))}
-                </div>
+            {/* Legend strip */}
+            <div style={{
+                display: 'flex', alignItems: 'center', gap: 20,
+                padding: '12px 16px', background: 'var(--bg-depth)',
+                borderRadius: 12, border: '1px solid var(--border-default)',
+                flexWrap: 'wrap'
+            }}>
+                <p style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Severity Scale:</p>
+                {LEGEND.map(({ tier, label }) => (
+                    <div key={tier} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{
+                            width: 10, height: 10, borderRadius: 3,
+                            background: TIER_STYLES[tier].bar.split(' ')[0].replace('bg-', '').replace('-400', '').replace('-500', '').replace('emerald', '#4ade80').replace('yellow', '#fbbf24').replace('orange', '#fb923c').replace('rose', '#f43f5e').replace('slate', '#64748b'),
+                            boxShadow: `0 0 8px ${TIER_STYLES[tier].bar.split(' ')[0].replace('bg-', '').replace('-400', '').replace('-500', '').replace('emerald', 'rgba(74,222,128,0.4)').replace('yellow', 'rgba(251,191,36,0.4)').replace('orange', 'rgba(251,146,60,0.4)').replace('rose', 'rgba(244,63,94,0.4)').replace('slate', 'rgba(100,116,139,0.4)')}`
+                        }} />
+                        <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--text-secondary)' }}>{label}</span>
+                    </div>
+                ))}
             </div>
 
-            {/* ── Grid by department ────────────────────────────────────────── */}
+            {/* Grid by department */}
             {Object.entries(byDept).map(([dept, members]) => (
                 <div key={dept}>
-                    <p className="text-[10px] text-slate-500 font-mono uppercase tracking-widest mb-2 ml-1">
-                        {dept}
-                    </p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                        <h3 style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                            {dept}
+                        </h3>
+                        <div style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
+                        <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700 }}>{members.length} STAFF</span>
+                    </div>
+
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+                        gap: 12
+                    }}>
                         {members.map(f => {
-                            const tier = getLoadTier(
-                                f.current_teaching_load,
-                                f.maximum_teaching_load,
-                                f.is_available_for_classes ?? true,
-                            );
+                            const tier = getLoadTier(f.current_teaching_load, f.maximum_teaching_load, f.is_available_for_classes ?? true);
                             const styles = TIER_STYLES[tier];
-                            const pct = f.maximum_teaching_load > 0
-                                ? Math.round((f.current_teaching_load / f.maximum_teaching_load) * 100)
-                                : 0;
+                            const pct = f.maximum_teaching_load > 0 ? Math.round((f.current_teaching_load / f.maximum_teaching_load) * 100) : 0;
                             const isHovered = hoveredId === f.account_id;
-                            const name = (f.first_name && f.last_name)
-                                ? `${f.first_name} ${f.last_name}`
-                                : f.email_address;
+                            const name = (f.first_name && f.last_name) ? `${f.first_name} ${f.last_name}` : f.email_address;
+
+                            // Map tailwind color strings to hex/var for the JS styles
+                            const getColor = (t) => {
+                                if (t === 'available') return '#4ade80';
+                                if (t === 'moderate') return '#fbbf24';
+                                if (t === 'high') return '#fb923c';
+                                if (t === 'maxed') return '#f43f5e';
+                                return 'var(--text-muted)';
+                            };
+                            const accentColor = getColor(tier);
 
                             return (
                                 <button
@@ -161,42 +146,60 @@ const FacultyHeatmap = ({ faculty = [], onSelect }) => {
                                     onClick={() => tier !== 'inactive' && onSelect?.(f)}
                                     onMouseEnter={() => setHoveredId(f.account_id)}
                                     onMouseLeave={() => setHoveredId(null)}
-                                    className={`relative p-4 rounded-xl border transition-all duration-200 text-left w-full ${styles.card}`}
+                                    style={{
+                                        position: 'relative',
+                                        padding: '16px',
+                                        borderRadius: 16,
+                                        border: `1px solid ${isHovered ? accentColor : 'var(--border-default)'}`,
+                                        background: isHovered ? `${accentColor}08` : 'var(--bg-surface)',
+                                        textAlign: 'left',
+                                        cursor: tier === 'inactive' ? 'not-allowed' : 'pointer',
+                                        transition: 'all 0.2s',
+                                        opacity: tier === 'inactive' ? 0.6 : 1,
+                                        boxShadow: isHovered ? `0 4px 20px ${accentColor}15` : 'var(--shadow-card)',
+                                        transform: isHovered ? 'translateY(-2px)' : 'none',
+                                    }}
                                 >
-                                    {/* Status dot */}
-                                    <span className={`absolute top-3 right-3 w-2 h-2 rounded-full ${styles.dot}`} />
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                                        <div style={{ minWidth: 0 }}>
+                                            <p style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-primary)', truncate: true }}>
+                                                {name.split(' ')[0]}
+                                            </p>
+                                            <p style={{ fontSize: '0.62rem', color: 'var(--text-muted)', truncate: true }}>
+                                                {name.includes(' ') ? name.split(' ').slice(1).join(' ') : 'Instructor'}
+                                            </p>
+                                        </div>
+                                        <div style={{
+                                            width: 8, height: 8, borderRadius: '50%',
+                                            background: accentColor,
+                                            boxShadow: `0 0 8px ${accentColor}`
+                                        }} />
+                                    </div>
 
-                                    {/* Name */}
-                                    <p className="text-sm font-semibold text-white truncate pr-4 leading-tight">
-                                        {name.split(' ')[0]}
-                                    </p>
-                                    <p className="text-[10px] text-slate-400 truncate mb-3">
-                                        {name.includes(' ') ? name.split(' ').slice(1).join(' ') : ''}
-                                    </p>
-
-                                    {/* Load fraction */}
-                                    <div className="flex items-end justify-between mb-1.5">
-                                        <span className="text-xl font-bold font-mono text-white leading-none">
-                                            {f.current_teaching_load}
-                                        </span>
-                                        <span className="text-xs text-slate-500 font-mono mb-0.5">
-                                            / {f.maximum_teaching_load}
-                                        </span>
+                                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 8 }}>
+                                        <span style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-primary)', fontFamily: 'var(--font-code)' }}>{f.current_teaching_load}</span>
+                                        <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700 }}>/ {f.maximum_teaching_load} UNITS</span>
                                     </div>
 
                                     {/* Progress bar */}
-                                    <div className="w-full bg-slate-800 rounded-full h-1">
-                                        <div
-                                            className={`h-1 rounded-full transition-all duration-500 ${styles.bar}`}
-                                            style={{ width: `${Math.min(pct, 100)}%` }}
-                                        />
+                                    <div style={{ width: '100%', height: 4, background: 'var(--bg-depth)', borderRadius: 2, overflow: 'hidden' }}>
+                                        <div style={{
+                                            width: `${Math.min(pct, 100)}%`,
+                                            height: '100%',
+                                            background: accentColor,
+                                            transition: 'width 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
+                                        }} />
                                     </div>
 
-                                    {/* Tier badge — only visible on hover */}
                                     {isHovered && (
-                                        <span className={`absolute bottom-2 right-2 text-[8px] font-black px-1.5 py-0.5 rounded border tracking-wider ${styles.badge}`}>
-                                            {styles.label}
-                                        </span>
+                                        <div style={{
+                                            position: 'absolute', bottom: 8, right: 8,
+                                            fontSize: '0.55rem', fontWeight: 900,
+                                            color: accentColor, textTransform: 'uppercase',
+                                            letterSpacing: '0.05em'
+                                        }}>
+                                            {tier}
+                                        </div>
                                     )}
                                 </button>
                             );

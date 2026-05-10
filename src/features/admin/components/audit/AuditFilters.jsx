@@ -1,5 +1,3 @@
-// frontend/src/features/admin/components/audit/AuditFilters.jsx
-
 import React, { useRef } from 'react';
 
 const EVENT_TYPES = [

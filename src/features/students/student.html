@@ -1,0 +1,1659 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>NexEnroll — Student Portal</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --black: #080808;
+            --black-2: #0f0f0f;
+            --black-3: #161616;
+            --black-4: #1e1e1e;
+            --black-5: #272727;
+            --gold: #C9A84C;
+            --gold-2: #E2C27D;
+            --gold-3: #F5DFA0;
+            --gold-dim: rgba(201, 168, 76, 0.15);
+            --gold-dim2: rgba(201, 168, 76, 0.08);
+            --white: #F5F0E8;
+            --white-dim: rgba(245, 240, 232, 0.6);
+            --white-faint: rgba(245, 240, 232, 0.1);
+            --red: #C0392B;
+            --green-bright: #27ae60;
+            --blue: #2980b9;
+            --radius: 8px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+            --font-display: 'Cormorant Garamond', serif;
+            --font-body: 'DM Sans', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --max-w: 430px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: #040404;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: var(--font-body);
+        }
+
+        /* PHONE SHELL */
+        .phone-frame {
+            width: 100%;
+            max-width: var(--max-w);
+            background: var(--black);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* STATUS BAR */
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px 6px;
+            background: var(--black-2);
+            font-size: 11px;
+            font-family: var(--font-mono);
+            color: var(--white-dim);
+        }
+
+        .status-time {
+            font-weight: 500;
+            color: var(--white);
+        }
+
+        .status-icons {
+            display: flex;
+            gap: 5px;
+        }
+
+        /* HEADER */
+        .app-header {
+            background: linear-gradient(180deg, var(--black-2) 0%, var(--black) 100%);
+            padding: 16px 20px 20px;
+            border-bottom: 1px solid rgba(201, 168, 76, 0.08);
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+        }
+
+        .header-logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logo-icon-sm {
+            width: 28px;
+            height: 28px;
+            background: linear-gradient(135deg, var(--gold), var(--gold-2));
+            border-radius: 7px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 15px;
+            color: var(--black);
+        }
+
+        .logo-text-sm {
+            font-family: var(--font-display);
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--gold-2);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .hdr-btn {
+            width: 34px;
+            height: 34px;
+            background: var(--black-4);
+            border: 1px solid rgba(201, 168, 76, 0.12);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .notif-pip {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--red);
+            border: 1px solid var(--black);
+        }
+
+        /* STUDENT PROFILE STRIP */
+        .profile-strip {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: linear-gradient(135deg, var(--black-3), var(--black-4));
+            border: 1px solid rgba(201, 168, 76, 0.12);
+            border-radius: var(--radius-lg);
+            padding: 14px 16px;
+        }
+
+        .stu-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #5a3a00, var(--gold));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-display);
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--black);
+            border: 2px solid rgba(201, 168, 76, 0.3);
+            flex-shrink: 0;
+        }
+
+        .stu-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .stu-name {
+            font-family: var(--font-display);
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--white);
+        }
+
+        .stu-id {
+            font-size: 11px;
+            color: var(--gold);
+            font-family: var(--font-mono);
+        }
+
+        .stu-course {
+            font-size: 11px;
+            color: var(--white-dim);
+            margin-top: 1px;
+        }
+
+        .stu-gwa {
+            text-align: center;
+            background: var(--gold-dim);
+            border: 1px solid rgba(201, 168, 76, 0.2);
+            border-radius: 10px;
+            padding: 8px 12px;
+            flex-shrink: 0;
+        }
+
+        .gwa-val {
+            font-family: var(--font-display);
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--gold-2);
+            line-height: 1;
+        }
+
+        .gwa-label {
+            font-size: 9px;
+            color: var(--white-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 2px;
+        }
+
+        /* SCROLLABLE CONTENT */
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding-bottom: 80px;
+        }
+
+        /* TAB PANELS */
+        .tab-panel {
+            display: none;
+            padding: 16px 16px 0;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        /* QUICK STATS */
+        .quick-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 18px;
+        }
+
+        .qs-card {
+            background: var(--black-3);
+            border: 1px solid rgba(201, 168, 76, 0.08);
+            border-radius: var(--radius-lg);
+            padding: 12px 10px;
+            text-align: center;
+        }
+
+        .qs-val {
+            font-family: var(--font-display);
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--white);
+        }
+
+        .qs-label {
+            font-size: 10px;
+            color: var(--white-dim);
+            margin-top: 2px;
+        }
+
+        /* SPARKLINE CARD */
+        .sparkline-card {
+            background: var(--black-3);
+            border: 1px solid rgba(201, 168, 76, 0.1);
+            border-radius: var(--radius-lg);
+            padding: 16px;
+            margin-bottom: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sparkline-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--gold), transparent);
+        }
+
+        .sc-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .sc-title {
+            font-size: 12px;
+            color: var(--white-dim);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .sc-gwa {
+            font-family: var(--font-display);
+            font-size: 36px;
+            font-weight: 700;
+            color: var(--gold-2);
+            line-height: 1;
+        }
+
+        .sc-change {
+            font-size: 11px;
+            color: var(--green-bright);
+            font-family: var(--font-mono);
+            margin-top: 2px;
+        }
+
+        /* SVG SPARKLINE */
+        .sparkline-svg {
+            width: 100%;
+            height: 60px;
+        }
+
+        /* NEXT CLASS */
+        .next-class-card {
+            background: linear-gradient(135deg, rgba(201, 168, 76, 0.1), rgba(201, 168, 76, 0.04));
+            border: 1px solid rgba(201, 168, 76, 0.2);
+            border-radius: var(--radius-lg);
+            padding: 14px 16px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .nc-time-block {
+            background: var(--gold-dim);
+            border: 1px solid rgba(201, 168, 76, 0.3);
+            border-radius: 10px;
+            padding: 10px 12px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .nc-time {
+            font-family: var(--font-display);
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--gold-2);
+            line-height: 1;
+        }
+
+        .nc-ampm {
+            font-size: 10px;
+            color: var(--gold);
+            font-family: var(--font-mono);
+        }
+
+        .nc-info {
+            flex: 1;
+        }
+
+        .nc-label {
+            font-size: 10px;
+            color: var(--gold);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            font-family: var(--font-mono);
+            margin-bottom: 3px;
+        }
+
+        .nc-subj {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--white);
+        }
+
+        .nc-meta {
+            font-size: 11px;
+            color: var(--white-dim);
+            margin-top: 2px;
+        }
+
+        /* CLEARANCE CARD */
+        .clearance-card {
+            background: var(--black-3);
+            border: 1px solid rgba(201, 168, 76, 0.08);
+            border-radius: var(--radius-lg);
+            padding: 14px 16px;
+            margin-bottom: 12px;
+        }
+
+        .clearance-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .cl-title {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--white);
+        }
+
+        .cl-badge-cleared {
+            background: rgba(39, 174, 96, 0.15);
+            border: 1px solid rgba(39, 174, 96, 0.3);
+            color: var(--green-bright);
+            font-size: 10px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-family: var(--font-mono);
+        }
+
+        .cl-badge-hold {
+            background: rgba(192, 57, 43, 0.15);
+            border: 1px solid rgba(192, 57, 43, 0.3);
+            color: #e74c3c;
+            font-size: 10px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-family: var(--font-mono);
+        }
+
+        .clearance-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .cl-step {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 12px;
+        }
+
+        .cl-icon {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            flex-shrink: 0;
+        }
+
+        .cl-icon.ok {
+            background: rgba(39, 174, 96, 0.2);
+            color: var(--green-bright);
+        }
+
+        .cl-icon.hold {
+            background: rgba(192, 57, 43, 0.2);
+            color: #e74c3c;
+        }
+
+        .cl-icon.pending {
+            background: rgba(243, 156, 18, 0.2);
+            color: #f39c12;
+        }
+
+        .cl-name {
+            flex: 1;
+            color: var(--white-dim);
+        }
+
+        .cl-status {
+            font-size: 10px;
+            font-family: var(--font-mono);
+        }
+
+        .cl-status.ok {
+            color: var(--green-bright);
+        }
+
+        .cl-status.hold {
+            color: #e74c3c;
+        }
+
+        .cl-status.pending {
+            color: #f39c12;
+        }
+
+        /* SCHEDULE */
+        .schedule-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .schedule-item {
+            background: var(--black-3);
+            border: 1px solid rgba(201, 168, 76, 0.08);
+            border-radius: var(--radius-lg);
+            padding: 14px;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            transition: border-color 0.15s;
+        }
+
+        .schedule-item:hover {
+            border-color: rgba(201, 168, 76, 0.2);
+        }
+
+        .sched-day {
+            width: 40px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .sched-day-name {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--gold);
+            font-family: var(--font-mono);
+        }
+
+        .sched-day-abbr {
+            font-family: var(--font-display);
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--white);
+            line-height: 1;
+        }
+
+        .sched-divider {
+            width: 1px;
+            background: rgba(201, 168, 76, 0.1);
+            align-self: stretch;
+            margin: 2px 0;
+        }
+
+        .sched-info {
+            flex: 1;
+        }
+
+        .sched-code {
+            font-size: 10px;
+            font-family: var(--font-mono);
+            color: var(--gold);
+            margin-bottom: 2px;
+        }
+
+        .sched-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--white);
+            margin-bottom: 4px;
+        }
+
+        .sched-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            font-size: 11px;
+            color: var(--white-dim);
+        }
+
+        .sched-meta span {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        /* GRADES */
+        .grades-summary {
+            background: var(--black-3);
+            border: 1px solid rgba(201, 168, 76, 0.1);
+            border-radius: var(--radius-lg);
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .gs-row {
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+        }
+
+        .gs-item .gs-val {
+            font-family: var(--font-display);
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--gold-2);
+        }
+
+        .gs-item .gs-label {
+            font-size: 10px;
+            color: var(--white-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 2px;
+        }
+
+        .grades-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .grade-card {
+            background: var(--black-3);
+            border: 1px solid rgba(201, 168, 76, 0.08);
+            border-radius: var(--radius-lg);
+            padding: 14px;
+        }
+
+        .gc-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .gc-code {
+            font-size: 10px;
+            color: var(--gold);
+            font-family: var(--font-mono);
+        }
+
+        .gc-title {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--white);
+            margin-top: 1px;
+        }
+
+        .gc-grades {
+            display: flex;
+            gap: 8px;
+        }
+
+        .gc-grade-chip {
+            text-align: center;
+            background: var(--black-4);
+            border: 1px solid rgba(201, 168, 76, 0.08);
+            border-radius: 6px;
+            padding: 6px 10px;
+            flex: 1;
+        }
+
+        .gc-grade-val {
+            font-family: var(--font-mono);
+            font-size: 14px;
+            color: var(--white);
+        }
+
+        .gc-grade-lbl {
+            font-size: 9px;
+            color: var(--white-dim);
+            text-transform: uppercase;
+            margin-top: 1px;
+        }
+
+        .remark-chip {
+            font-size: 10px;
+            padding: 3px 9px;
+            border-radius: 20px;
+            font-family: var(--font-mono);
+        }
+
+        .remark-chip.passed {
+            background: rgba(39, 174, 96, 0.15);
+            color: var(--green-bright);
+            border: 1px solid rgba(39, 174, 96, 0.3);
+        }
+
+        .remark-chip.failed {
+            background: rgba(192, 57, 43, 0.15);
+            color: #e74c3c;
+            border: 1px solid rgba(192, 57, 43, 0.3);
+        }
+
+        .remark-chip.enrolled {
+            background: rgba(41, 128, 185, 0.15);
+            color: #3498db;
+            border: 1px solid rgba(41, 128, 185, 0.3);
+        }
+
+        /* ENROLL */
+        .enroll-modes {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+
+        .mode-card {
+            background: var(--black-3);
+            border: 1px solid rgba(201, 168, 76, 0.1);
+            border-radius: var(--radius-lg);
+            padding: 18px 14px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mode-card.active,
+        .mode-card:hover {
+            border-color: rgba(201, 168, 76, 0.35);
+            background: var(--gold-dim2);
+        }
+
+        .mode-icon {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .mode-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--white);
+        }
+
+        .mode-desc {
+            font-size: 10px;
+            color: var(--white-dim);
+            margin-top: 3px;
+        }
+
+        .drag-schedule {
+            background: var(--black-3);
+            border: 1px solid rgba(201, 168, 76, 0.1);
+            border-radius: var(--radius-lg);
+            padding: 14px;
+            margin-bottom: 12px;
+        }
+
+        .ds-title {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--white);
+            margin-bottom: 12px;
+        }
+
+        .draggable-subj {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--black-4);
+            border: 1px solid rgba(201, 168, 76, 0.08);
+            border-radius: var(--radius);
+            padding: 10px 12px;
+            margin-bottom: 6px;
+            cursor: grab;
+            transition: border-color 0.15s;
+        }
+
+        .draggable-subj.conflict {
+            border-color: rgba(192, 57, 43, 0.4);
+            background: rgba(192, 57, 43, 0.05);
+        }
+
+        .draggable-subj:hover {
+            border-color: rgba(201, 168, 76, 0.25);
+        }
+
+        .ds-handle {
+            color: rgba(201, 168, 76, 0.3);
+            font-size: 14px;
+        }
+
+        .ds-code {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: var(--gold);
+            width: 56px;
+        }
+
+        .ds-name {
+            flex: 1;
+            font-size: 12px;
+            color: var(--white-dim);
+        }
+
+        .ds-time {
+            font-size: 10px;
+            color: var(--white-dim);
+            font-family: var(--font-mono);
+        }
+
+        .ds-conflict {
+            font-size: 10px;
+            color: #e74c3c;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .cor-upload-area {
+            border: 2px dashed rgba(201, 168, 76, 0.25);
+            border-radius: var(--radius-lg);
+            padding: 32px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .cor-upload-area:hover {
+            border-color: rgba(201, 168, 76, 0.5);
+        }
+
+        .upload-icon {
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+
+        .upload-text {
+            font-size: 13px;
+            color: var(--white-dim);
+        }
+
+        .upload-sub {
+            font-size: 11px;
+            color: rgba(245, 240, 232, 0.35);
+            margin-top: 4px;
+        }
+
+        .btn-gold {
+            display: block;
+            width: 100%;
+            background: linear-gradient(135deg, var(--gold), var(--gold-2));
+            color: var(--black);
+            border: none;
+            padding: 12px;
+            border-radius: var(--radius-lg);
+            font-size: 13px;
+            font-family: var(--font-mono);
+            font-weight: 600;
+            cursor: pointer;
+            letter-spacing: 0.5px;
+            transition: opacity 0.15s;
+            margin-top: 12px;
+        }
+
+        .btn-gold:hover {
+            opacity: 0.85;
+        }
+
+        /* SUPPORT */
+        .support-input-card {
+            background: var(--black-3);
+            border: 1px solid rgba(201, 168, 76, 0.1);
+            border-radius: var(--radius-lg);
+            padding: 16px;
+            margin-bottom: 14px;
+        }
+
+        .si-label {
+            font-size: 12px;
+            color: var(--white-dim);
+            margin-bottom: 8px;
+        }
+
+        .si-textarea {
+            width: 100%;
+            background: var(--black-4);
+            border: 1px solid rgba(201, 168, 76, 0.15);
+            border-radius: var(--radius);
+            color: var(--white);
+            padding: 10px 12px;
+            font-size: 13px;
+            font-family: var(--font-body);
+            resize: none;
+            height: 90px;
+            line-height: 1.5;
+        }
+
+        .si-textarea:focus {
+            outline: none;
+            border-color: var(--gold);
+        }
+
+        .ai-confidence {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--gold-dim2);
+            border: 1px solid rgba(201, 168, 76, 0.15);
+            border-radius: var(--radius);
+            padding: 8px 12px;
+            margin-top: 8px;
+            font-size: 11px;
+            font-family: var(--font-mono);
+        }
+
+        .ai-conf-val {
+            color: var(--gold-2);
+            font-weight: 500;
+        }
+
+        .ai-conf-route {
+            color: var(--white-dim);
+        }
+
+        .ai-conf-dept {
+            color: var(--green-bright);
+        }
+
+        .tickets-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .ticket-card {
+            background: var(--black-3);
+            border: 1px solid rgba(201, 168, 76, 0.08);
+            border-radius: var(--radius-lg);
+            padding: 14px;
+        }
+
+        .tk-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 6px;
+        }
+
+        .tk-id {
+            font-size: 10px;
+            color: var(--gold);
+            font-family: var(--font-mono);
+        }
+
+        .tk-time {
+            font-size: 10px;
+            color: var(--white-dim);
+            font-family: var(--font-mono);
+        }
+
+        .tk-issue {
+            font-size: 13px;
+            color: var(--white);
+            margin-bottom: 6px;
+        }
+
+        .tk-meta {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .tk-badge {
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-family: var(--font-mono);
+        }
+
+        .tk-badge.open {
+            background: rgba(41, 128, 185, 0.15);
+            color: #3498db;
+            border: 1px solid rgba(41, 128, 185, 0.3);
+        }
+
+        .tk-badge.resolved {
+            background: rgba(39, 174, 96, 0.15);
+            color: var(--green-bright);
+            border: 1px solid rgba(39, 174, 96, 0.3);
+        }
+
+        .tk-badge.pending {
+            background: rgba(243, 156, 18, 0.15);
+            color: #f39c12;
+            border: 1px solid rgba(243, 156, 18, 0.3);
+        }
+
+        .tk-dept {
+            font-size: 10px;
+            color: var(--white-dim);
+        }
+
+        /* BOTTOM NAV */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            max-width: var(--max-w);
+            background: rgba(8, 8, 8, 0.95);
+            backdrop-filter: blur(16px);
+            border-top: 1px solid rgba(201, 168, 76, 0.12);
+            display: flex;
+            padding: 8px 0 12px;
+            z-index: 100;
+        }
+
+        .nav-tab {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            cursor: pointer;
+            padding: 4px 0;
+            transition: all 0.15s;
+        }
+
+        .nav-tab-icon {
+            font-size: 20px;
+            line-height: 1;
+            position: relative;
+        }
+
+        .nav-tab-label {
+            font-size: 9px;
+            color: var(--white-dim);
+            letter-spacing: 0.3px;
+        }
+
+        .nav-tab.active .nav-tab-label {
+            color: var(--gold-2);
+        }
+
+        .nav-tab.active .nav-tab-icon {
+            filter: drop-shadow(0 0 6px rgba(201, 168, 76, 0.5));
+        }
+
+        .nav-pip {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--red);
+            border: 1px solid var(--black);
+        }
+
+        /* SECTION HEADER */
+        .sec-hdr {
+            margin-bottom: 14px;
+        }
+
+        .sec-title {
+            font-family: var(--font-display);
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--white);
+        }
+
+        .sec-sub {
+            font-size: 12px;
+            color: var(--white-dim);
+            margin-top: 2px;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(12px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        .tab-panel.active>* {
+            animation: fadeUp 0.3s ease both;
+        }
+
+        /* DESKTOP: constrain and center */
+        @media(min-width:480px) {
+            body {
+                align-items: flex-start;
+                padding: 20px 0;
+            }
+
+            .phone-frame {
+                border-radius: 36px;
+                min-height: 800px;
+                max-height: 900px;
+                overflow: hidden;
+                border: 1px solid rgba(201, 168, 76, 0.15);
+            }
+
+            .bottom-nav {
+                border-radius: 0 0 36px 36px;
+            }
+
+            .content {
+                height: calc(900px - 200px);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="phone-frame">
+        <!-- STATUS BAR -->
+        <div class="status-bar">
+            <span class="status-time">9:41 AM</span>
+            <div class="status-icons">
+                <span>📶</span><span>🛜</span><span>🔋</span>
+            </div>
+        </div>
+
+        <!-- HEADER -->
+        <div class="app-header">
+            <div class="header-top">
+                <div class="header-logo">
+                    <div class="logo-icon-sm">N</div>
+                    <div class="logo-text-sm">NexEnroll</div>
+                </div>
+                <div class="header-actions">
+                    <div class="hdr-btn">
+                        <div class="nav-pip"></div>🔔
+                    </div>
+                    <div class="hdr-btn">⚙</div>
+                </div>
+            </div>
+
+            <div class="profile-strip">
+                <div class="stu-avatar">AR</div>
+                <div class="stu-info">
+                    <div class="stu-name">Ana Reyes</div>
+                    <div class="stu-id">2021-00124 · NwSSU</div>
+                    <div class="stu-course">BSCS 3rd Year · Section A</div>
+                </div>
+                <div class="stu-gwa">
+                    <div class="gwa-val">1.58</div>
+                    <div class="gwa-label">GWA</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CONTENT -->
+        <div class="content">
+
+            <!-- HOME TAB -->
+            <div class="tab-panel active" id="tab-home">
+                <div class="quick-stats" style="margin-top:16px;">
+                    <div class="qs-card">
+                        <div class="qs-val">87</div>
+                        <div class="qs-label">Earned Units</div>
+                    </div>
+                    <div class="qs-card">
+                        <div class="qs-val">21</div>
+                        <div class="qs-label">Enrolled</div>
+                    </div>
+                    <div class="qs-card">
+                        <div class="qs-val">29</div>
+                        <div class="qs-label">Subjects Passed</div>
+                    </div>
+                </div>
+
+                <!-- GWA SPARKLINE -->
+                <div class="sparkline-card">
+                    <div class="sc-header">
+                        <div>
+                            <div class="sc-title">GWA Trend</div>
+                            <div class="sc-gwa">1.58</div>
+                            <div class="sc-change">↑ Improved from 1.72</div>
+                        </div>
+                    </div>
+                    <svg class="sparkline-svg" viewBox="0 0 340 60" preserveAspectRatio="none">
+                        <defs>
+                            <linearGradient id="spark" x1="0" x2="0" y1="0" y2="1">
+                                <stop offset="0%" stop-color="rgba(201,168,76,0.4)" />
+                                <stop offset="100%" stop-color="rgba(201,168,76,0)" />
+                            </linearGradient>
+                        </defs>
+                        <path d="M0,50 L48,45 L96,38 L144,42 L192,30 L240,25 L288,18 L340,12" fill="none"
+                            stroke="var(--gold)" stroke-width="2" stroke-linecap="round" />
+                        <path d="M0,50 L48,45 L96,38 L144,42 L192,30 L240,25 L288,18 L340,12 L340,60 L0,60Z"
+                            fill="url(#spark)" />
+                        <circle cx="340" cy="12" r="4" fill="var(--gold-2)" />
+                    </svg>
+                    <div
+                        style="display:flex;justify-content:space-between;font-size:9px;color:var(--white-dim);font-family:var(--font-mono);margin-top:4px;">
+                        <span>1st Yr</span><span>2nd Yr</span><span>3rd Yr S1</span><span>Now</span>
+                    </div>
+                </div>
+
+                <!-- NEXT CLASS -->
+                <div class="next-class-card">
+                    <div class="nc-time-block">
+                        <div class="nc-time">10:30</div>
+                        <div class="nc-ampm">AM</div>
+                    </div>
+                    <div class="nc-info">
+                        <div class="nc-label">↑ Next Class</div>
+                        <div class="nc-subj">Data Structures & Algo</div>
+                        <div class="nc-meta">📍 CS Lab 2 · Dr. Reyes</div>
+                    </div>
+                </div>
+
+                <!-- CLEARANCE -->
+                <div class="clearance-card">
+                    <div class="clearance-header">
+                        <div class="cl-title">🛡 Clearance Status</div>
+                        <span class="cl-badge-hold">1 HOLD</span>
+                    </div>
+                    <div class="clearance-steps">
+                        <div class="cl-step">
+                            <div class="cl-icon ok">✓</div><span class="cl-name">Registrar</span><span
+                                class="cl-status ok">Cleared</span>
+                        </div>
+                        <div class="cl-step">
+                            <div class="cl-icon hold">✕</div><span class="cl-name">Finance / Cashier</span><span
+                                class="cl-status hold">Balance: ₱3,200</span>
+                        </div>
+                        <div class="cl-step">
+                            <div class="cl-icon ok">✓</div><span class="cl-name">Library</span><span
+                                class="cl-status ok">Cleared</span>
+                        </div>
+                        <div class="cl-step">
+                            <div class="cl-icon ok">✓</div><span class="cl-name">Department</span><span
+                                class="cl-status ok">Cleared</span>
+                        </div>
+                        <div class="cl-step">
+                            <div class="cl-icon pending">⏳</div><span class="cl-name">Academic Affairs</span><span
+                                class="cl-status pending">Pending</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SCHEDULE TAB -->
+            <div class="tab-panel" id="tab-sched">
+                <div class="sec-hdr" style="margin-top:16px;">
+                    <div class="sec-title">My Schedule</div>
+                    <div class="sec-sub">A.Y. 2024–2025 · 1st Semester</div>
+                </div>
+                <div class="schedule-list">
+                    <div class="schedule-item">
+                        <div class="sched-day">
+                            <div class="sched-day-name">MWF</div>
+                            <div class="sched-day-abbr">M</div>
+                        </div>
+                        <div class="sched-divider"></div>
+                        <div class="sched-info">
+                            <div class="sched-code">CS 301</div>
+                            <div class="sched-title">Data Structures & Algorithms</div>
+                            <div class="sched-meta"><span>🕐 7:30–8:30 AM</span><span>📍 CS Lab 2</span><span>👤 Dr.
+                                    Reyes</span></div>
+                        </div>
+                    </div>
+                    <div class="schedule-item">
+                        <div class="sched-day">
+                            <div class="sched-day-name">TTh</div>
+                            <div class="sched-day-abbr">T</div>
+                        </div>
+                        <div class="sched-divider"></div>
+                        <div class="sched-info">
+                            <div class="sched-code">CS 302</div>
+                            <div class="sched-title">Computer Architecture</div>
+                            <div class="sched-meta"><span>🕐 9:00–10:30 AM</span><span>📍 Room 301</span><span>👤 Prof.
+                                    Cruz</span></div>
+                        </div>
+                    </div>
+                    <div class="schedule-item">
+                        <div class="sched-day">
+                            <div class="sched-day-name">MWF</div>
+                            <div class="sched-day-abbr">W</div>
+                        </div>
+                        <div class="sched-divider"></div>
+                        <div class="sched-info">
+                            <div class="sched-code">IT 303</div>
+                            <div class="sched-title">Database Management Systems</div>
+                            <div class="sched-meta"><span>🕐 1:00–2:00 PM</span><span>📍 Room 208</span><span>👤 Dr.
+                                    Santos</span></div>
+                        </div>
+                    </div>
+                    <div class="schedule-item">
+                        <div class="sched-day">
+                            <div class="sched-day-name">TTh</div>
+                            <div class="sched-day-abbr">Th</div>
+                        </div>
+                        <div class="sched-divider"></div>
+                        <div class="sched-info">
+                            <div class="sched-code">GE 301</div>
+                            <div class="sched-title">Ethics in Technology</div>
+                            <div class="sched-meta"><span>🕐 2:30–4:00 PM</span><span>📍 AVR</span><span>👤 Prof.
+                                    Garcia</span></div>
+                        </div>
+                    </div>
+                    <div class="schedule-item">
+                        <div class="sched-day">
+                            <div class="sched-day-name">Fri</div>
+                            <div class="sched-day-abbr">F</div>
+                        </div>
+                        <div class="sched-divider"></div>
+                        <div class="sched-info">
+                            <div class="sched-code">CS 304</div>
+                            <div class="sched-title">Software Engineering</div>
+                            <div class="sched-meta"><span>🕐 3:00–6:00 PM</span><span>📍 CS Lab 1</span><span>👤 Dr.
+                                    Reyes</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GRADES TAB -->
+            <div class="tab-panel" id="tab-grades">
+                <div class="grades-summary" style="margin-top:16px;">
+                    <div class="gs-row">
+                        <div class="gs-item">
+                            <div class="gs-val">1.58</div>
+                            <div class="gs-label">GWA</div>
+                        </div>
+                        <div class="gs-item">
+                            <div class="gs-val">87u</div>
+                            <div class="gs-label">Earned</div>
+                        </div>
+                        <div class="gs-item">
+                            <div class="gs-val">29</div>
+                            <div class="gs-label">Passed</div>
+                        </div>
+                        <div class="gs-item">
+                            <div class="gs-val" style="color:var(--red)">1</div>
+                            <div class="gs-label">Failed</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="grades-list">
+                    <div class="grade-card">
+                        <div class="gc-header">
+                            <div>
+                                <div class="gc-code">CS 301</div>
+                                <div class="gc-title">Data Structures & Algorithms</div>
+                            </div>
+                            <span class="remark-chip enrolled">ENROLLED</span>
+                        </div>
+                        <div class="gc-grades">
+                            <div class="gc-grade-chip">
+                                <div class="gc-grade-val">88</div>
+                                <div class="gc-grade-lbl">Midterm</div>
+                            </div>
+                            <div class="gc-grade-chip">
+                                <div class="gc-grade-val">—</div>
+                                <div class="gc-grade-lbl">Final</div>
+                            </div>
+                            <div class="gc-grade-chip">
+                                <div class="gc-grade-val">1.50</div>
+                                <div class="gc-grade-lbl">Grade</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grade-card">
+                        <div class="gc-header">
+                            <div>
+                                <div class="gc-code">CS 201</div>
+                                <div class="gc-title">Computer Programming 2</div>
+                            </div>
+                            <span class="remark-chip passed">PASSED</span>
+                        </div>
+                        <div class="gc-grades">
+                            <div class="gc-grade-chip">
+                                <div class="gc-grade-val">92</div>
+                                <div class="gc-grade-lbl">Midterm</div>
+                            </div>
+                            <div class="gc-grade-chip">
+                                <div class="gc-grade-val">95</div>
+                                <div class="gc-grade-lbl">Final</div>
+                            </div>
+                            <div class="gc-grade-chip">
+                                <div class="gc-grade-val">1.25</div>
+                                <div class="gc-grade-lbl">Grade</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grade-card">
+                        <div class="gc-header">
+                            <div>
+                                <div class="gc-code">MATH 202</div>
+                                <div class="gc-title">Discrete Mathematics</div>
+                            </div>
+                            <span class="remark-chip failed">FAILED</span>
+                        </div>
+                        <div class="gc-grades">
+                            <div class="gc-grade-chip">
+                                <div class="gc-grade-val">61</div>
+                                <div class="gc-grade-lbl">Midterm</div>
+                            </div>
+                            <div class="gc-grade-chip">
+                                <div class="gc-grade-val">58</div>
+                                <div class="gc-grade-lbl">Final</div>
+                            </div>
+                            <div class="gc-grade-chip">
+                                <div class="gc-grade-val" style="color:var(--red)">5.0</div>
+                                <div class="gc-grade-lbl">Grade</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grade-card">
+                        <div class="gc-header">
+                            <div>
+                                <div class="gc-code">GE 201</div>
+                                <div class="gc-title">Life &amp; Works of Rizal</div>
+                            </div>
+                            <span class="remark-chip passed">PASSED</span>
+                        </div>
+                        <div class="gc-grades">
+                            <div class="gc-grade-chip">
+                                <div class="gc-grade-val">85</div>
+                                <div class="gc-grade-lbl">Midterm</div>
+                            </div>
+                            <div class="gc-grade-chip">
+                                <div class="gc-grade-val">88</div>
+                                <div class="gc-grade-lbl">Final</div>
+                            </div>
+                            <div class="gc-grade-chip">
+                                <div class="gc-grade-val">1.75</div>
+                                <div class="gc-grade-lbl">Grade</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ENROLL TAB -->
+            <div class="tab-panel" id="tab-enroll">
+                <div class="sec-hdr" style="margin-top:16px;">
+                    <div class="sec-title">Smart Enrollment</div>
+                    <div class="sec-sub">2nd Semester · A.Y. 2024–2025</div>
+                </div>
+
+                <div class="enroll-modes">
+                    <div class="mode-card active" id="modeAuto" onclick="setMode('auto')">
+                        <div class="mode-icon">🤖</div>
+                        <div class="mode-label">Auto-Scheduler</div>
+                        <div class="mode-desc">AI builds conflict-free schedule</div>
+                    </div>
+                    <div class="mode-card" id="modeCOR" onclick="setMode('cor')">
+                        <div class="mode-icon">📄</div>
+                        <div class="mode-label">Upload COR</div>
+                        <div class="mode-desc">Scan via AI vision</div>
+                    </div>
+                </div>
+
+                <div id="autoMode">
+                    <div class="drag-schedule">
+                        <div class="ds-title">Recommended Subjects — drag to order</div>
+                        <div id="enrollList">
+                            <div class="draggable-subj" draggable="true"><span class="ds-handle">⠿</span><span
+                                    class="ds-code">CS 401</span><span class="ds-name">Software Engineering</span><span
+                                    class="ds-time">MWF 7:30</span></div>
+                            <div class="draggable-subj" draggable="true"><span class="ds-handle">⠿</span><span
+                                    class="ds-code">CS 402</span><span class="ds-name">Operating Systems</span><span
+                                    class="ds-time">TTh 9:00</span></div>
+                            <div class="draggable-subj draggable-subj conflict" draggable="true"><span
+                                    class="ds-handle">⠿</span><span class="ds-code">CS 403</span><span
+                                    class="ds-name">Computer Networks</span><span class="ds-conflict">⚠ Conflict</span>
+                            </div>
+                            <div class="draggable-subj" draggable="true"><span class="ds-handle">⠿</span><span
+                                    class="ds-code">CS 404</span><span class="ds-name">Thesis 1</span><span
+                                    class="ds-time">Fri 1:00</span></div>
+                            <div class="draggable-subj" draggable="true"><span class="ds-handle">⠿</span><span
+                                    class="ds-code">GE 401</span><span class="ds-name">Ethics</span><span
+                                    class="ds-time">Wed 2:30</span></div>
+                        </div>
+                    </div>
+                    <button class="btn-gold" onclick="alert('Enrollment submitted for admin review!')">Submit Enrollment
+                        →</button>
+                </div>
+
+                <div id="corMode" style="display:none;">
+                    <div class="cor-upload-area" onclick="alert('COR upload dialog would open here')">
+                        <div class="upload-icon">📤</div>
+                        <div class="upload-text">Tap to upload COR</div>
+                        <div class="upload-sub">JPG, PNG, PDF — max 10MB</div>
+                    </div>
+                    <div
+                        style="background:var(--black-3);border:1px solid rgba(201,168,76,0.1);border-radius:var(--radius-lg);padding:14px;margin-top:12px;">
+                        <div style="font-size:12px;color:var(--white-dim);margin-bottom:8px;">AI Vision will extract:
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--white-dim);">
+                            <div>✓ Subject codes &amp; titles</div>
+                            <div>✓ Schedule and room assignments</div>
+                            <div>✓ Faculty names</div>
+                            <div>✓ Units per subject</div>
+                        </div>
+                    </div>
+                    <button class="btn-gold" onclick="alert('Upload COR first!')">Process with AI →</button>
+                </div>
+            </div>
+
+            <!-- SUPPORT TAB -->
+            <div class="tab-panel" id="tab-support">
+                <div class="sec-hdr" style="margin-top:16px;">
+                    <div class="sec-title">AI Support Desk</div>
+                    <div class="sec-sub">Describe your concern in natural language</div>
+                </div>
+
+                <div class="support-input-card">
+                    <div class="si-label">What's your concern?</div>
+                    <textarea class="si-textarea" id="supportText"
+                        placeholder="e.g. My grade in CS 201 seems wrong, I passed all exams but the system shows FAILED..."
+                        oninput="analyzeSupport()"></textarea>
+                    <div class="ai-confidence" id="aiConf" style="display:none;">
+                        <span>🤖 AI Confidence:</span>
+                        <span class="ai-conf-val" id="confVal">—</span>
+                        <span class="ai-conf-route">→ Route to</span>
+                        <span class="ai-conf-dept" id="confDept">—</span>
+                    </div>
+                    <button class="btn-gold" onclick="submitTicket()">Submit Ticket →</button>
+                </div>
+
+                <div class="sec-hdr">
+                    <div class="sec-title" style="font-size:16px;">My Tickets</div>
+                </div>
+
+                <div class="tickets-list">
+                    <div class="ticket-card">
+                        <div class="tk-header">
+                            <span class="tk-id">TKT-2024-0041</span>
+                            <span class="tk-time">Nov 8, 9:24 AM</span>
+                        </div>
+                        <div class="tk-issue">Grade discrepancy in CS 201 — final grade shows FAILED despite passing all
+                            requirements.</div>
+                        <div class="tk-meta"><span class="tk-badge open">OPEN</span><span class="tk-dept">→
+                                Registrar</span></div>
+                    </div>
+                    <div class="ticket-card">
+                        <div class="tk-header">
+                            <span class="tk-id">TKT-2024-0028</span>
+                            <span class="tk-time">Oct 22, 2:11 PM</span>
+                        </div>
+                        <div class="tk-issue">Cannot access Student Portal — login keeps failing despite correct
+                            credentials.</div>
+                        <div class="tk-meta"><span class="tk-badge resolved">RESOLVED</span><span class="tk-dept">→ IT
+                                Support</span></div>
+                    </div>
+                    <div class="ticket-card">
+                        <div class="tk-header">
+                            <span class="tk-id">TKT-2024-0015</span>
+                            <span class="tk-time">Sep 10, 11:05 AM</span>
+                        </div>
+                        <div class="tk-issue">Scholarship application not reflected in Finance clearance status.</div>
+                        <div class="tk-meta"><span class="tk-badge pending">PENDING</span><span class="tk-dept">→
+                                Finance</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BOTTOM NAV -->
+        <div class="bottom-nav">
+            <div class="nav-tab active" id="nav-home" onclick="switchTab('home',this)">
+                <div class="nav-tab-icon">🏠</div>
+                <div class="nav-tab-label">Home</div>
+            </div>
+            <div class="nav-tab" id="nav-sched" onclick="switchTab('sched',this)">
+                <div class="nav-tab-icon">📅</div>
+                <div class="nav-tab-label">Schedule</div>
+            </div>
+            <div class="nav-tab" id="nav-grades" onclick="switchTab('grades',this)">
+                <div class="nav-tab-icon">📊</div>
+                <div class="nav-tab-label">Grades</div>
+            </div>
+            <div class="nav-tab" id="nav-enroll" onclick="switchTab('enroll',this)">
+                <div class="nav-tab-icon">✏️</div>
+                <div class="nav-tab-label">Enroll</div>
+            </div>
+            <div class="nav-tab" id="nav-support" onclick="switchTab('support',this)">
+                <div class="nav-tab-icon" style="position:relative">💬<div class="nav-pip"></div>
+                </div>
+                <div class="nav-tab-label">Support</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(name, el) {
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('tab-' + name).classList.add('active');
+            document.getElementById('nav-' + name).classList.add('active');
+        }
+
+        function setMode(mode) {
+            document.getElementById('modeAuto').classList.toggle('active', mode === 'auto');
+            document.getElementById('modeCOR').classList.toggle('active', mode === 'cor');
+            document.getElementById('autoMode').style.display = mode === 'auto' ? 'block' : 'none';
+            document.getElementById('corMode').style.display = mode === 'cor' ? 'block' : 'none';
+        }
+
+        const routes = {
+            grade: { dept: 'Registrar', conf: '91%' },
+            payment: { dept: 'Finance', conf: '88%' },
+            portal: { dept: 'IT Support', conf: '95%' },
+            schedule: { dept: 'Registrar', conf: '84%' },
+            scholarship: { dept: 'Academic Affairs', conf: '79%' },
+        };
+
+        function analyzeSupport() {
+            const text = document.getElementById('supportText').value.toLowerCase();
+            const conf = document.getElementById('aiConf');
+            if (text.length < 10) { conf.style.display = 'none'; return; }
+
+            let match = routes.portal;
+            if (text.includes('grade') || text.includes('failed') || text.includes('passed')) match = routes.grade;
+            else if (text.includes('payment') || text.includes('balance') || text.includes('fee')) match = routes.payment;
+            else if (text.includes('schedule') || text.includes('subject') || text.includes('enroll')) match = routes.schedule;
+            else if (text.includes('scholarship') || text.includes('academic')) match = routes.scholarship;
+
+            document.getElementById('confVal').textContent = match.conf;
+            document.getElementById('confDept').textContent = match.dept;
+            conf.style.display = 'flex';
+        }
+
+        let tkCount = 3;
+        function submitTicket() {
+            const text = document.getElementById('supportText').value;
+            if (!text.trim()) { alert('Please describe your concern first.'); return; }
+            tkCount++;
+            const list = document.querySelector('.tickets-list');
+            const dept = document.getElementById('confDept').textContent || 'Registrar';
+            const div = document.createElement('div');
+            div.className = 'ticket-card';
+            div.style.borderColor = 'rgba(201,168,76,0.3)';
+            div.innerHTML = `
+    <div class="tk-header">
+      <span class="tk-id">TKT-2024-00${tkCount}</span>
+      <span class="tk-time">Just now</span>
+    </div>
+    <div class="tk-issue">${text}</div>
+    <div class="tk-meta"><span class="tk-badge open">OPEN</span><span class="tk-dept">→ ${dept}</span></div>
+  `;
+            list.prepend(div);
+            document.getElementById('supportText').value = '';
+            document.getElementById('aiConf').style.display = 'none';
+        }
+
+        // Drag and drop
+        const enrollList = document.getElementById('enrollList');
+        let draggedEl = null;
+        enrollList.querySelectorAll('.draggable-subj').forEach(item => {
+            item.addEventListener('dragstart', () => { draggedEl = item; item.style.opacity = '0.4'; });
+            item.addEventListener('dragend', () => { draggedEl = null; item.style.opacity = '1'; });
+            item.addEventListener('dragover', e => e.preventDefault());
+            item.addEventListener('drop', () => { if (draggedEl && draggedEl !== item) enrollList.insertBefore(draggedEl, item); });
+        });
+    </script>
+</body>
+
+</html>

@@ -1,5 +1,3 @@
-// frontend/src/features/admin/components/dashboard/SignalChart.jsx
-
 import React, { useMemo } from 'react';
 import {
     Chart as ChartJS,

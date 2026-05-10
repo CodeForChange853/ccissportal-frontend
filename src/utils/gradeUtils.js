@@ -1,6 +1,3 @@
-// frontend/src/utils/gradeUtils.js
-// Shared GWA computation used by AdminGrading and StudentDashboard.
-// Single source of truth — both portals will now show the same GWA value.
 
 /**
  * Computes GWA from a grades array.
@@ -14,10 +11,7 @@ export const computeGWA = (grades = []) => {
     return parseFloat((sum / graded.length).toFixed(2));
 };
 
-/**
- * Returns a label + color token for a given GWA value.
- * Uses the Philippine grading system (1.0 best, 5.0 failing).
- */
+
 export const gwaLabel = (gwa) => {
     if (gwa === null) return { label: 'N/A', color: 'var(--text-muted)' };
     if (gwa <= 1.25) return { label: 'Summa Cum Laude', color: 'var(--color-success)' };

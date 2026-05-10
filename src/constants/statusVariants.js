@@ -1,6 +1,3 @@
-// frontend/src/constants/statusVariants.js
-
-
 export const ENROLLMENT_STATUS_VARIANT = {
     PENDING: 'warning',
     APPROVED: 'normal',

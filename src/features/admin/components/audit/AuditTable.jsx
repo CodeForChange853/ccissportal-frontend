@@ -1,5 +1,3 @@
-// frontend/src/features/admin/components/audit/AuditTable.jsx
-
 import React, { useState } from 'react';
 import AnomalyBadge from './AnomalyBadge';
 

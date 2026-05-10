@@ -1,161 +1,111 @@
-// frontend/src/features/student/components/GradesTab.jsx
-// PHASE 4: Pure UI — grades tab content sliced from StudentDashboard.
+import React, { useMemo } from 'react';
 
-import React from 'react';
+const GradeCard = ({ grade }) => {
+    const isPassed = grade.completion_status === 'PASSED';
+    const isFailed = grade.completion_status === 'FAILED';
+    const isEnrolled = grade.completion_status === 'ENROLLED';
 
-const StatMini = ({ label, value, unit, color = '#00c9b1' }) => (
-    <div
-        className="flex flex-col items-center gap-0.5 px-2 py-3 rounded-xl flex-1 min-w-0"
-        style={{ background: 'rgba(0,201,177,0.06)', border: `1px solid ${color}22` }}
-    >
-        <span className="text-base font-black text-white leading-none">{value}</span>
-        <span className="text-[9px] uppercase tracking-wider font-semibold" style={{ color }}>
-            {label}
-        </span>
-        {unit && <span className="text-[9px] text-slate-600">{unit}</span>}
-    </div>
-);
+    const statusCfg = {
+        PASSED: { color: 'var(--student-green)', label: 'Passed' },
+        FAILED: { color: 'var(--student-red)', label: 'Failed' },
+        ENROLLED: { color: 'var(--student-gold)', label: 'Enrolled' },
+    }[grade.completion_status] || { color: 'var(--student-white-dim)', label: grade.completion_status };
 
-const statusStyle = {
-    PASSED: { bg: 'rgba(16,185,129,0.15)', color: '#10b981' },
-    FAILED: { bg: 'rgba(255,92,110,0.15)', color: '#ff5c6e' },
-    ENROLLED: { bg: 'rgba(99,102,241,0.15)', color: '#818cf8' },
-};
+    const gradeVal = grade.final_grade === 'N/A' ? '—' : (grade.final_grade || '—');
 
-const gradeColor = (g) =>
-    g && g !== 'N/A'
-        ? parseFloat(g) <= 3.0 ? '#00c9b1' : '#ff5c6e'
-        : 'rgba(255,255,255,0.2)';
-
-const GradesTab = ({ grades, gwa, gwaMeta, passed, failed, earned, academicStanding }) => (
-    <div className="space-y-3">
-        {/* Summary */}
-        <div
-            className="rounded-2xl p-4"
-            style={{ background: '#1e2246', border: '1px solid rgba(255,255,255,0.06)' }}
-        >
-            <div className="flex gap-2">
-                <StatMini label="GWA" value={gwa ?? '—'} color={gwaMeta.color} />
-                <StatMini label="Passed" value={passed} unit="subjs" color="#10b981" />
-                <StatMini label="Failed" value={failed} unit="subjs" color="#ff5c6e" />
-                <StatMini label="Units" value={earned} unit="earned" color="#22d3ee" />
+    return (
+        <div className="rounded-xl p-4 flex items-center gap-4 transition-all hover:bg-white/[0.02]"
+            style={{ background: 'var(--student-black-4)', border: '1px solid rgba(201, 168, 76, 0.08)' }}>
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-black shrink-0"
+                style={{ background: 'var(--student-gold-dim)', color: 'var(--student-gold)', fontFamily: 'var(--student-font-display)' }}>
+                {gradeVal}
             </div>
-        </div>
-
-        {/* Mobile cards */}
-        <div className="block md:hidden space-y-2">
-            {grades.map((g, i) => {
-                const st = statusStyle[g.completion_status] ?? { bg: 'rgba(255,255,255,0.05)', color: '#64748b' };
-                return (
-                    <div
-                        key={i}
-                        className="rounded-2xl p-3 flex items-center justify-between"
-                        style={{ background: '#1e2246', border: '1px solid rgba(255,255,255,0.06)' }}
-                    >
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-sm font-bold font-mono" style={{ color: '#22d3ee' }}>
-                                    {g.subject_code}
-                                </span>
-                                <span
-                                    className="text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase"
-                                    style={{ background: st.bg, color: st.color }}
-                                >
-                                    {g.completion_status}
-                                </span>
-                            </div>
-                            <p className="text-xs text-slate-500 truncate mt-0.5">{g.subject_title}</p>
-                        </div>
-                        <div className="text-right ml-3 flex-shrink-0">
-                            <p className="text-lg font-black leading-none"
-                                style={{ color: gradeColor(g.final_grade) }}>
-                                {g.final_grade === 'N/A' ? '—' : (g.final_grade || '—')}
-                            </p>
-                        </div>
-                    </div>
-                );
-            })}
-        </div>
-
-        {/* Desktop table */}
-        <div className="hidden md:block">
-            <div className="rounded-2xl overflow-hidden"
-                style={{ background: '#1e2246', border: '1px solid rgba(255,255,255,0.06)' }}>
-                <table className="w-full text-sm">
-                    <thead style={{ background: 'rgba(0,0,0,0.2)' }}>
-                        <tr className="text-[10px] text-slate-600 uppercase font-mono tracking-wider">
-                            <th className="px-4 py-3 text-left">Code</th>
-                            <th className="px-4 py-3 text-left">Subject</th>
-                            <th className="px-4 py-3 text-center">Midterm</th>
-                            <th className="px-4 py-3 text-center">Final</th>
-                            <th className="px-4 py-3 text-left">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {grades.map((g, i) => {
-                            const st = statusStyle[g.completion_status] ?? { bg: 'rgba(255,255,255,0.05)', color: '#64748b' };
-                            return (
-                                <tr key={i} className="border-t border-white/5 hover:bg-white/[0.02] transition-colors">
-                                    <td className="px-4 py-3 font-bold font-mono text-xs" style={{ color: '#22d3ee' }}>
-                                        {g.subject_code}
-                                    </td>
-                                    <td className="px-4 py-3 text-slate-300 text-xs">{g.subject_title}</td>
-                                    <td className="px-4 py-3 text-center font-black text-sm"
-                                        style={{ color: gradeColor(g.midterm_grade) }}>
-                                        {g.midterm_grade ?? '—'}
-                                    </td>
-                                    <td className="px-4 py-3 text-center font-black text-sm"
-                                        style={{ color: gradeColor(g.final_grade) }}>
-                                        {g.final_grade === 'N/A' ? '—' : (g.final_grade || '—')}
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <span
-                                            className="text-[9px] font-bold px-2 py-0.5 rounded-full uppercase"
-                                            style={{ background: st.bg, color: st.color }}
-                                        >
-                                            {g.completion_status}
-                                        </span>
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                        {grades.length === 0 && (
-                            <tr>
-                                <td colSpan="5" className="py-16 text-center text-slate-600 text-xs font-mono">
-                                    NO RECORDS YET
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        {/* PREREQUISITE BLOCKER VIEW */}
-        {academicStanding?.next_semester_recommendation?.subject_results?.some(r => r.status === 'BLOCKED') && (
-            <div className="mt-6">
-                <p className="text-[10px] uppercase tracking-wider font-semibold text-slate-500 mb-2 px-1">Curriculum Status · Prerequisite Blockers</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {academicStanding.next_semester_recommendation.subject_results
-                        .filter(r => r.status === 'BLOCKED')
-                        .map((subj, i) => (
-                            <div key={i} className="flex gap-3 p-3 rounded-2xl items-center" style={{ background: 'rgba(255,92,110,0.04)', border: '1px solid rgba(255,92,110,0.15)' }}>
-                                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg bg-rose-900/40 text-rose-400">
-                                    🔒
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex justify-between items-start">
-                                        <p className="text-sm font-bold text-slate-300 line-through decoration-rose-500/50">{subj.subject_code}</p>
-                                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded text-rose-400 bg-rose-900/30">BLOCKED</span>
-                                    </div>
-                                    <p className="text-[10px] text-slate-500 mt-1 leading-tight">{subj.blocking_reason}</p>
-                                </div>
-                            </div>
-                        ))}
+            <div className="flex-1 min-w-0">
+                <div className="flex justify-between items-start">
+                    <p className="font-bold text-white text-base truncate" style={{ fontFamily: 'var(--student-font-display)' }}>{grade.subject_code}</p>
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md" 
+                        style={{ color: statusCfg.color, background: `${statusCfg.color}15`, border: `1px solid ${statusCfg.color}33` }}>
+                        {statusCfg.label}
+                    </span>
+                </div>
+                <p className="text-xs text-student-white-dim truncate mt-0.5">{grade.subject_title}</p>
+                <div className="flex items-center gap-3 mt-1.5">
+                    <span className="text-[10px] text-student-white-dim/60 font-mono">Units: {grade.units || 3}</span>
+                    <span className="text-[10px] text-student-white-dim/60 font-mono uppercase tracking-tighter">Semester: {grade.semester}</span>
                 </div>
             </div>
-        )}
-    </div>
-);
+        </div>
+    );
+};
+
+const GradesTab = ({ grades, gwa, gwaMeta, passed, failed, earned, academicStanding }) => {
+    const sortedGrades = useMemo(() => {
+        return [...grades].sort((a, b) => (b.semester || '').localeCompare(a.semester || ''));
+    }, [grades]);
+
+    const bySem = useMemo(() => {
+        const groups = {};
+        sortedGrades.forEach(g => {
+            if (!groups[g.semester]) groups[g.semester] = [];
+            groups[g.semester].push(g);
+        });
+        return groups;
+    }, [sortedGrades]);
+
+    return (
+        <div className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="rounded-2xl p-5" style={{ background: 'var(--student-black-3)', border: '1px solid rgba(201, 168, 76, 0.1)' }}>
+                    <p className="text-[10px] uppercase font-bold text-student-white-dim opacity-50 mb-1 tracking-widest font-mono">Cumulative GWA</p>
+                    <p className="text-3xl font-black text-student-gold" style={{ fontFamily: 'var(--student-font-display)' }}>{gwa || '—'}</p>
+                    <p className="text-[10px] mt-1 font-bold uppercase" style={{ color: gwaMeta.color, fontFamily: 'var(--student-font-mono)' }}>{gwaMeta.label}</p>
+                </div>
+                <div className="rounded-2xl p-5" style={{ background: 'var(--student-black-3)', border: '1px solid rgba(201, 168, 76, 0.1)' }}>
+                    <p className="text-[10px] uppercase font-bold text-student-white-dim opacity-50 mb-1 tracking-widest font-mono">Total Units Earned</p>
+                    <p className="text-3xl font-black text-white" style={{ fontFamily: 'var(--student-font-display)' }}>{earned}</p>
+                    <p className="text-[10px] mt-1 text-student-white-dim uppercase font-mono">Credits toward degree</p>
+                </div>
+                <div className="rounded-2xl p-5" style={{ background: 'var(--student-black-3)', border: '1px solid rgba(201, 168, 76, 0.1)' }}>
+                    <p className="text-[10px] uppercase font-bold text-student-white-dim opacity-50 mb-1 tracking-widest font-mono">Academic Status</p>
+                    <p className="text-3xl font-black text-student-green" style={{ fontFamily: 'var(--student-font-display)' }}>{academicStanding?.standing || 'REGULAR'}</p>
+                    <p className="text-[10px] mt-1 text-student-white-dim uppercase font-mono">Current Evaluation</p>
+                </div>
+            </div>
+
+            <div className="space-y-6">
+                {Object.entries(bySem).map(([sem, items]) => (
+                    <div key={sem} className="space-y-3">
+                        <div className="flex items-center gap-3 px-1">
+                            <h3 className="text-sm font-bold text-student-gold-2 tracking-widest uppercase" style={{ fontFamily: 'var(--student-font-mono)' }}>{sem}</h3>
+                            <div className="h-[1px] flex-1 bg-white/5" />
+                            <span className="text-[10px] font-mono text-student-white-dim/40">{items.length} Subjects</span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {items.map((g, i) => <GradeCard key={i} grade={g} />)}
+                        </div>
+                    </div>
+                ))}
+
+                {grades.length === 0 && (
+                    <div className="p-16 text-center rounded-2xl" style={{ background: 'var(--student-black-3)', border: '1px dashed rgba(201, 168, 76, 0.2)' }}>
+                        <p className="text-student-white-dim text-sm font-medium">No academic records found.</p>
+                    </div>
+                )}
+            </div>
+            
+            <div className="p-5 rounded-2xl" style={{ background: 'var(--student-gold-dim2)', border: '1px solid rgba(201, 168, 76, 0.1)' }}>
+                <div className="flex items-start gap-4">
+                    <span className="text-2xl mt-1">🎓</span>
+                    <div>
+                        <h4 className="text-white font-bold text-base mb-1" style={{ fontFamily: 'var(--student-font-display)' }}>Academic Integrity Notice</h4>
+                        <p className="text-xs text-student-white-dim leading-relaxed">
+                            These grades are for viewing purposes only and do not serve as an official Transcript of Records. For official documentation, please visit the Registrar's Office or request through the Support portal.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 export default GradesTab;

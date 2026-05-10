@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -98,8 +98,19 @@
 
   /* ── Layout ── */
   --sidebar-w-open: 240px;
-  --sidebar-w-closed: 60px;
+  --sidebar-w-closed: 64px;
   --topbar-height: 52px;
+
+  /* ── Unified Portal Variables ── */
+  --portal-sidebar-bg: #0D0D0D;
+  --portal-sidebar-border: rgba(255, 255, 255, 0.10);
+  --portal-sidebar-text: rgba(255, 255, 255, 0.50);
+  --portal-sidebar-active: #DACE84;
+  --portal-sidebar-hover: rgba(255, 255, 255, 0.08);
+  --portal-sidebar-active-bg: rgba(218, 206, 132, 0.12);
+  --portal-topbar-bg: rgba(254, 254, 254, 0.88);
+  --portal-topbar-blur: 14px;
+  --portal-accent: #BA9731;
 
   /* ── Border Radius ── */
   --border-radius-sm: 6px;
@@ -119,6 +130,27 @@
   --sidebar-item-active-bg: rgba(218, 206, 132, 0.15);
   --sidebar-logo-text: #FEFEFE;
   --sidebar-text-muted: rgba(255, 255, 255, 0.32);
+
+  /* ── Student Portal Theme (NexEnroll) ── */
+  --student-black: #080808;
+  --student-black-2: #0f0f0f;
+  --student-black-3: #161616;
+  --student-black-4: #1e1e1e;
+  --student-black-5: #272727;
+  --student-gold: #C9A84C;
+  --student-gold-2: #E2C27D;
+  --student-gold-3: #F5DFA0;
+  --student-gold-dim: rgba(201, 168, 76, 0.15);
+  --student-gold-dim2: rgba(201, 168, 76, 0.08);
+  --student-white: #F5F0E8;
+  --student-white-dim: rgba(245, 240, 232, 0.6);
+  --student-white-faint: rgba(245, 240, 232, 0.1);
+  --student-red: #C0392B;
+  --student-green: #27ae60;
+  --student-blue: #2980b9;
+  --student-font-display: 'Cormorant Garamond', serif;
+  --student-font-body: 'DM Sans', sans-serif;
+  --student-font-mono: 'JetBrains Mono', monospace;
 }
 
 /* ── Dark Mode: Synthwave ── */
@@ -189,13 +221,26 @@
   --glow-red: 0 2px 16px rgba(248, 113, 113, 0.15);
 
   --sidebar-border: rgba(85, 78, 107, 0.30);
-  --sidebar-text-inactive: #8B839A;
+  --sidebar-text-inactive: rgba(203, 195, 208, 0.70);
   --sidebar-text-active: #FFFFFF;
+  --sidebar-logo-text: #FFFFFF;
+  --sidebar-text-muted: rgba(139, 131, 154, 0.65);
   --sidebar-item-active-bg: rgba(244, 11, 233, 0.12);
 
   --scrollbar-track: #09061C;
   --scrollbar-thumb: #3A2858;
   --scrollbar-thumb-hover: #554E6B;
+
+  /* ── Unified Portal Variables (Dark) ── */
+  --portal-sidebar-bg: #2F1E4A;
+  --portal-sidebar-border: rgba(85, 78, 107, 0.30);
+  --portal-sidebar-text: rgba(203, 195, 208, 0.70);
+  --portal-sidebar-active: #FFFFFF;
+  --portal-sidebar-hover: rgba(244, 11, 233, 0.06);
+  --portal-sidebar-active-bg: rgba(244, 11, 233, 0.12);
+  --portal-topbar-bg: rgba(9, 6, 28, 0.92);
+  --portal-topbar-blur: 18px;
+  --portal-accent: #F40BE9;
 }
 
 [data-theme="dark"] select {
@@ -462,13 +507,21 @@ body {
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 .cyber-panel__subtitle {
   font-size: 0.68rem;
   color: var(--text-muted);
   margin-top: 2px;
+}
+
+[data-theme="dark"] .cyber-panel__title {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .cyber-panel__subtitle {
+  color: var(--text-secondary);
 }
 
 .cyber-panel__header-right {

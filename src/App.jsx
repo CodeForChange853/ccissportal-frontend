@@ -1,5 +1,3 @@
-// frontend/src/App.jsx
-
 import React, { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
@@ -50,60 +48,98 @@ const PageLoader = () => (
   </div>
 );
 
+const SystemGuard = ({ children }) => {
+  const [checking, setChecking] = React.useState(true);
+  const location = window.location.pathname;
+
+  React.useEffect(() => {
+    // Skip check if already on maintenance page or public auth pages
+    if (['/maintenance', '/', '/login', '/register'].includes(location)) {
+      setChecking(false);
+      return;
+    }
+
+    const verifyStatus = async () => {
+      try {
+        const { data } = await client.checkSystemStatus();
+        if (data.maintenance_mode) {
+          // If maintenance is on, and we ARE NOT logged in as admin, redirect.
+          // Note: Token check is handled by ProtectedRoute/AuthContext too, 
+          // but this handles the "without even trying to login" part for public users.
+          const token = localStorage.getItem('token');
+          const role = localStorage.getItem('user_role');
+          
+          if (!token || role !== 'ADMIN') {
+            sessionStorage.setItem('maintenance_reason', data.maintenance_reason || '');
+            window.location.href = '/maintenance';
+            return;
+          }
+        }
+      } catch (err) {
+        console.error("System health check failed", err);
+      } finally {
+        setChecking(false);
+      }
+    };
+
+    verifyStatus();
+  }, [location]);
+
+  if (checking && location !== '/maintenance') return <PageLoader />;
+  return children;
+};
+
+import client from './api/client';
+
 const App = () => (
   <BrowserRouter>
     <AuthProvider>
       <ToastProvider>
-        <Routes>
-          {/* ── Public routes ──────────────────────────────────── */}
-          <Route path="/" element={<Landing />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<RegistrationWizard />} />
+        <SystemGuard>
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<RegistrationWizard />} />
+            <Route path="/maintenance" element={<MaintenanceScreen />} />
 
-          {/*
-                     * /maintenance is PUBLIC — no auth guard.
-                     * The client.js interceptor redirects here on 503.
-                     * Must NOT be inside <PortalGuard> or the redirect loop
-                     * will send unauthenticated users to /login instead.
-                     */}
-          <Route path="/maintenance" element={<MaintenanceScreen />} />
+            {/* ── Authenticated portal routes  */}
+            <Route path="/portal" element={<PortalGuard />}>
+              <Route path="student" element={<StudentDashboard />} />
+              <Route path="enrollment" element={<Navigate to="/portal/student" replace />} />
+              <Route path="faculty" element={<FacultyDashboard />} />
 
-          {/* ── Authenticated portal routes ─────────────────────── */}
-          <Route path="/portal" element={<PortalGuard />}>
-            <Route path="student" element={<StudentDashboard />} />
-            <Route path="enrollment" element={<Navigate to="/portal/student" replace />} />
-            <Route path="faculty" element={<FacultyDashboard />} />
+              <Route path="admin" element={<AdminLayout />}>
+                <Route index element={<AdminOverview />} />
+                <Route path="enrollments" element={<ReviewEnrollments />} />
+                <Route path="grading" element={<AdminGrading />} />
+                <Route path="curriculum" element={<ManageCurriculum />} />
+                <Route path="admissions" element={<AdminAdmissions />} />
+                <Route path="support" element={<AdminSupport />} />
+                {/* Faculty + Users consolidated into CommandCenter tabs */}
+                <Route path="faculty" element={<Navigate to="/portal/admin/settings" state={{ section: 'faculty' }} replace />} />
+                <Route path="users" element={<Navigate to="/portal/admin/settings" state={{ section: 'users' }} replace />} />
+                <Route path="settings" element={<CommandCenter />} />
+                <Route
+                  path="audit"
+                  element={
+                    <Suspense fallback={<PageLoader />}>
+                      <AuditIntelligence />
+                    </Suspense>
+                  }
+                />
+              </Route>
 
-            <Route path="admin" element={<AdminLayout />}>
-              <Route index element={<AdminOverview />} />
-              <Route path="enrollments" element={<ReviewEnrollments />} />
-              <Route path="grading" element={<AdminGrading />} />
-              <Route path="curriculum" element={<ManageCurriculum />} />
-              <Route path="admissions" element={<AdminAdmissions />} />
-              <Route path="support" element={<AdminSupport />} />
-              {/* Faculty + Users consolidated into CommandCenter tabs */}
-              <Route path="faculty" element={<Navigate to="/portal/admin/settings" state={{ section: 'faculty' }} replace />} />
-              <Route path="users" element={<Navigate to="/portal/admin/settings" state={{ section: 'users' }} replace />} />
-              <Route path="settings" element={<CommandCenter />} />
-              <Route
-                path="audit"
-                element={
-                  <Suspense fallback={<PageLoader />}>
-                    <AuditIntelligence />
-                  </Suspense>
-                }
-              />
+              <Route path="support" element={<Navigate to="/portal/student" replace />} />
+              <Route path="*" element={<Navigate to="/portal/student" replace />} />
             </Route>
 
-            <Route path="support" element={<Navigate to="/portal/student" replace />} />
-            <Route path="*" element={<Navigate to="/portal/student" replace />} />
-          </Route>
-
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </SystemGuard>
       </ToastProvider>
     </AuthProvider>
   </BrowserRouter>
 );
 
 export default App;
+

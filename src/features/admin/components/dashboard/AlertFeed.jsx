@@ -1,5 +1,3 @@
-// frontend/src/features/admin/components/dashboard/AlertFeed.jsx
-
 import React, { useMemo } from 'react';
 
 const SEVERITY_MAP = {

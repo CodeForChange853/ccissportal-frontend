@@ -1,7 +1,3 @@
-// frontend/src/features/student/api/studentApi.js
-// PHASE 4: Student feature domain API — all student-specific calls in one place.
-// StudentDashboard was calling client.get(...) inline for 4 different endpoints.
-
 import apiClient from '../../../api/client';
 
 export const studentApi = {
@@ -30,4 +26,9 @@ export const studentApi = {
 
     checkScanStatus: (scanToken) =>
         apiClient.get(`/documents/status/${scanToken}`).then(r => r.data),
+        
+    fetchAvailableFaculty: () => apiClient.get('/student/consultations/faculty').then(r => r.data),
+    fetchFacultyTimeChunks: (facultyId, date) => apiClient.get(`/student/consultations/faculty/${facultyId}/available-slots?date=${date}`).then(r => r.data),
+    bookConsultation: (data) => apiClient.post('/student/consultations/requests', data).then(r => r.data),
+    fetchMyConsultations: () => apiClient.get('/student/consultations/requests').then(r => r.data),
 };

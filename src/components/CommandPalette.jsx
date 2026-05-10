@@ -1,4 +1,3 @@
-// frontend/src/components/CommandPalette.jsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminApi } from '../features/admin/api/adminApi';
@@ -17,7 +16,7 @@ const CommandPalette = ({ isOpen, onClose }) => {
     const inputRef = useRef(null);
     const listRef = useRef(null);
     const debounceRef = useRef(null);
-    const queryCache = useRef(new Map()); // query → { results, ts }
+    const queryCache = useRef(new Map());
 
     const [query, setQuery] = useState('');
     const [results, setResults] = useState([]);

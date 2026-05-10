@@ -1,5 +1,3 @@
-// frontend/src/features/admin/components/audit/AnomalyBadge.jsx
-
 import React from 'react';
 
 const LEVELS = [

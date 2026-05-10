@@ -79,6 +79,9 @@ export function AuthProvider({ children }) {
         errorMessage = `Invalid format: ${detail[0].loc[1]} is ${detail[0].msg}`;
       } else if (typeof detail === 'string') {
         errorMessage = detail;
+      } else if (typeof detail === 'object' && detail !== null) {
+        // Handle object-based details like maintenance info
+        errorMessage = detail.message || detail.reason || errorMessage;
       }
 
       return { success: false, message: errorMessage };

@@ -1,6 +1,3 @@
-// frontend/src/features/admin/components/ScanDiffViewer.jsx
-
-
 import React, { useMemo } from 'react';
 
 // ── Helpers 

@@ -1,7 +1,7 @@
 import { openDB } from 'idb';
 
-const DB_NAME = 'CCIS-Sportal-DB';
-const DB_VERSION = 3; // Bump version to trigger upgrade()
+const DB_NAME = 'enrollmate';
+const DB_VERSION = 3;
 
 export const initDB = async () => {
   return openDB(DB_NAME, DB_VERSION, {
@@ -50,9 +50,7 @@ export const getLocalGrades = async (subjectCode) => {
 export const addToSyncQueue = async (updatePayload) => {
   const db = await initDB();
   const key = makeKey(updatePayload.student_id, updatePayload.subject_code);
-  // db.put() upserts: if same student+subject was edited again, it REPLACES
-  // the old queue entry instead of creating a duplicate.
-  // Stamp with epoch-ms for server-side last-write-wins comparison.
+
   await db.put('syncQueue', {
     ...updatePayload,
     compositeKey: key,
@@ -71,11 +69,7 @@ export const clearSyncQueue = async () => {
   await db.clear('syncQueue');
 };
 
-/**
- * Remove a single entry from the sync queue by its composite key.
- * Used after successful sync to clear only confirmed records,
- * leaving stale/skipped records for user review.
- */
+
 export const removeFromSyncQueue = async (compositeKey) => {
   const db = await initDB();
   try {

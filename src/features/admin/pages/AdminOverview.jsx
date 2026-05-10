@@ -1,4 +1,4 @@
-
+// frontend/src/features/admin/pages/AdminOverview.jsx
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -12,13 +12,12 @@ import Skeleton from '../../../components/ui/Skeleton';
 import RadarScanner from '../components/dashboard/RadarScanner';
 import AlertFeed from '../components/dashboard/AlertFeed';
 import SignalChart from '../components/dashboard/SignalChart';
-// SystemStatusCards intentionally omitted — its 5 metrics duplicate Row 1 KPIs.
 import ActivityGraph from '../components/dashboard/ActivityGraph';
 import AISystemOverseer from '../components/dashboard/AISystemOverseer';
 
 const POLL_MS = 90_000;
 
-// ── Sync countdown ────────────────────────────────────────────────────────────
+// ── Sync countdown ─────────────────────────────────────────────────────────
 const useSyncCountdown = (refreshTick) => {
     const [seconds, setSeconds] = useState(POLL_MS / 1000);
     useEffect(() => {
@@ -32,140 +31,121 @@ const useSyncCountdown = (refreshTick) => {
     return seconds;
 };
 
-// ── Gradient hero KPI card ────────────────────────────────────────────────────
-// The two prominent top-left metric cards with full colored backgrounds.
-const HeroKpiCard = ({ label, value, unit = '', sub, gradient }) => (
-    <div style={{
-        background: gradient,
-        borderRadius: 10,
-        padding: '20px 22px',
-        flex: '1 1 0',
-        minWidth: 0,
-        position: 'relative',
-        overflow: 'hidden',
-    }}>
-        <div style={{
-            position: 'absolute',
-            top: -28,
-            right: -28,
-            width: 90,
-            height: 90,
-            borderRadius: '50%',
-            background: 'rgba(255,255,255,0.07)',
-            pointerEvents: 'none',
-        }} />
-        <p style={{
-            fontFamily: "var(--font-terminal)",
-            fontSize: '0.58rem',
-            letterSpacing: '0.04em',
+// ── Unified premium KPI card ───────────────────────────────────────────────
+// Handles both gradient-hero style and surface-metric style via props.
+// gradient  → full colored background (like the original HeroKpiCard)
+// color     → surface card with colored accent top-border and value text
+const KpiCard = ({ label, value, unit = '', sub, gradient, color, alert = false }) => {
+    const hasGradient = Boolean(gradient);
+    return (
+        <div
+            style={{
+                background: hasGradient ? gradient : 'var(--bg-surface)',
+                border: hasGradient ? 'none' : `1px solid ${color}30`,
+                borderTop: hasGradient ? 'none' : `2px solid ${color}`,
+                borderRadius: 14,
+                padding: '20px 22px',
+                flex: '1 1 0',
+                minWidth: 0,
+                position: 'relative',
+                overflow: 'hidden',
+                boxShadow: alert
+                    ? `0 0 28px ${color}18, 0 2px 10px rgba(0,0,0,0.10)`
+                    : hasGradient
+                        ? '0 4px 24px rgba(0,0,0,0.22)'
+                        : '0 1px 3px rgba(0,0,0,0.06)',
+                transition: 'box-shadow 0.3s ease',
+            }}
+        >
+            {hasGradient && (
+                <>
+                    <div style={{
+                        position: 'absolute', top: -32, right: -32,
+                        width: 100, height: 100, borderRadius: '50%',
+                        background: 'rgba(255,255,255,0.07)', pointerEvents: 'none',
+                    }} />
+                    <div style={{
+                        position: 'absolute', bottom: -20, left: -10,
+                        width: 60, height: 60, borderRadius: '50%',
+                        background: 'rgba(255,255,255,0.04)', pointerEvents: 'none',
+                    }} />
+                </>
+            )}
 
-            color: 'rgba(255,255,255,0.72)',
-            marginBottom: 10,
-        }}>
-            {label}
-        </p>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
             <p style={{
-                fontFamily: "var(--font-display)",
-                fontSize: '2.5rem',
-                fontWeight: 900,
-                color: '#fff',
-                lineHeight: 1,
+                fontFamily: 'var(--font-terminal)',
+                fontSize: '0.57rem',
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                color: hasGradient ? 'rgba(255,255,255,0.72)' : 'var(--text-muted)',
+                marginBottom: 10,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
             }}>
-                {value ?? '—'}
+                {label}
             </p>
-            {unit && (
-                <span style={{
-                    fontFamily: "var(--font-terminal)",
-                    fontSize: '0.85rem',
-                    fontWeight: 600,
-                    color: 'rgba(255,255,255,0.70)',
-                    marginLeft: 2,
+
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+                <p style={{
+                    fontFamily: 'var(--font-display)',
+                    fontSize: '2.2rem',
+                    fontWeight: 900,
+                    color: hasGradient ? '#fff' : color,
+                    lineHeight: 1,
+                    textShadow: alert && !hasGradient ? `0 0 18px ${color}70` : 'none',
                 }}>
-                    {unit}
-                </span>
+                    {value ?? '—'}
+                </p>
+                {unit && (
+                    <span style={{
+                        fontFamily: 'var(--font-terminal)',
+                        fontSize: '0.82rem',
+                        fontWeight: 600,
+                        color: hasGradient ? 'rgba(255,255,255,0.70)' : `${color}bb`,
+                        marginLeft: 2,
+                    }}>
+                        {unit}
+                    </span>
+                )}
+            </div>
+
+            {sub && (
+                <p style={{
+                    fontFamily: 'var(--font-terminal)',
+                    fontSize: '0.56rem',
+                    color: hasGradient ? 'rgba(255,255,255,0.58)' : 'var(--text-muted)',
+                    marginTop: 10,
+                    letterSpacing: '0.04em',
+                }}>
+                    {sub}
+                </p>
             )}
         </div>
-        {sub && (
-            <p style={{
-                fontFamily: "var(--font-terminal)",
-                fontSize: '0.57rem',
-                color: 'rgba(255,255,255,0.58)',
-                marginTop: 9,
-                letterSpacing: '0.04em',
-            }}>
-                {sub}
-            </p>
-        )}
-    </div>
-);
+    );
+};
 
-// ── Secondary KPI tile ────────────────────────────────────────────────────────
-const KpiTile = ({ label, value, sub, color, alert = false }) => (
-    <div style={{
-        background: 'var(--bg-surface)',
-        border: '1px solid var(--border-default)',
-        borderTop: `2px solid ${color}`,
-        borderRadius: '0 0 8px 8px',
-        padding: '14px 16px',
-        flex: '1 1 0',
-        minWidth: 0,
-    }}>
-        <p style={{
-            fontFamily: "var(--font-terminal)",
-            fontSize: '0.55rem',
-            letterSpacing: '0.04em',
-
-            color: 'var(--text-muted)',
-            marginBottom: 7,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-        }}>
-            {label}
-        </p>
-        <p style={{
-            fontFamily: "var(--font-display)",
-            fontSize: '1.55rem',
-            fontWeight: 700,
-            color,
-            lineHeight: 1,
-            textShadow: alert ? `0 0 16px ${color}80` : 'none',
-        }}>
-            {value ?? '—'}
-        </p>
-        {sub && (
-            <p style={{
-                fontFamily: "var(--font-terminal)",
-                fontSize: '0.55rem',
-                color: 'var(--text-muted)',
-                marginTop: 5,
-                letterSpacing: '0.04em',
-            }}>
-                {sub}
-            </p>
-        )}
-    </div>
-);
-
+// ── Capacity bar ───────────────────────────────────────────────────────────
 const CapacityBar = ({ label, count, total, color }) => {
     const pct = total > 0 ? Math.round((count / total) * 100) : 0;
     return (
         <div style={{ marginBottom: 14 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                <span style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.60rem', color: 'var(--text-secondary)', letterSpacing: '0.04em' }}>{label}</span>
+                <span style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.60rem', color: 'var(--text-secondary)', letterSpacing: '0.04em' }}>
+                    {label}
+                </span>
                 <span style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.62rem', fontWeight: 700, color }}>
                     {count}<span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> / {total}</span>
                 </span>
             </div>
-            <div style={{ width: '100%', height: 4, background: 'var(--bg-depth)', borderRadius: 2, overflow: 'hidden' }}>
-                <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 2, transition: 'width 0.7s ease' }} />
+            <div style={{ width: '100%', height: 4, background: 'var(--bg-depth)', borderRadius: 4, overflow: 'hidden' }}>
+                <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 4, transition: 'width 0.7s ease' }} />
             </div>
         </div>
     );
 };
 
-// ── Faculty member row ────────────────────────────────────────────────────────
+// ── Faculty member row ─────────────────────────────────────────────────────
 const FacultyRow = ({ faculty }) => {
     const load = faculty.current_teaching_load ?? 0;
     const maxLoad = faculty.maximum_teaching_load ?? 1;
@@ -185,7 +165,7 @@ const FacultyRow = ({ faculty }) => {
         }}>
             <div style={{ minWidth: 0 }}>
                 <p style={{
-                    fontFamily: "var(--font-body)",
+                    fontFamily: 'var(--font-body)',
                     fontSize: '0.78rem',
                     fontWeight: 500,
                     color: 'var(--text-primary)',
@@ -195,39 +175,27 @@ const FacultyRow = ({ faculty }) => {
                 }}>
                     {faculty.full_name || faculty.email || '—'}
                 </p>
-                <div style={{
-                    marginTop: 4,
-                    height: 2,
-                    background: 'var(--bg-depth)',
-                    borderRadius: 1,
-                    overflow: 'hidden',
-                }}>
+                <div style={{ marginTop: 4, height: 2, background: 'var(--bg-depth)', borderRadius: 2, overflow: 'hidden' }}>
                     <div style={{
                         width: `${Math.min(pct, 100)}%`,
                         height: '100%',
                         background: color,
-                        borderRadius: 1,
+                        borderRadius: 2,
                         transition: 'width 0.6s ease',
                     }} />
                 </div>
             </div>
-            <p style={{
-                fontFamily: "var(--font-terminal)",
-                fontSize: '0.65rem',
-                color: 'var(--text-muted)',
-                textAlign: 'right',
-            }}>
+            <p style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.65rem', color: 'var(--text-muted)', textAlign: 'right' }}>
                 {load}/{maxLoad}
             </p>
             <span style={{
-                fontFamily: "var(--font-terminal)",
+                fontFamily: 'var(--font-terminal)',
                 fontSize: '0.52rem',
                 letterSpacing: '0.02em',
-
                 color,
                 background: `${color}15`,
                 border: `1px solid ${color}30`,
-                borderRadius: 4,
+                borderRadius: 6,
                 padding: '2px 5px',
                 textAlign: 'center',
             }}>
@@ -237,7 +205,7 @@ const FacultyRow = ({ faculty }) => {
     );
 };
 
-// ── Main component ────────────────────────────────────────────────────────────
+// ── Main component ─────────────────────────────────────────────────────────
 const AdminOverview = () => {
     const navigate = useNavigate();
     const refreshTick = useAdminRefresh();
@@ -330,13 +298,13 @@ const AdminOverview = () => {
     if (error) return (
         <div style={{
             padding: '20px 24px',
-            fontFamily: "var(--font-terminal)",
+            fontFamily: 'var(--font-terminal)',
             fontSize: '0.75rem',
             color: 'var(--color-danger)',
             background: 'var(--color-danger-bg)',
             border: '1px solid var(--border-critical)',
             borderLeft: '3px solid var(--color-danger)',
-            borderRadius: 8,
+            borderRadius: 12,
         }}>
             ⚠ {error}
         </div>
@@ -345,22 +313,21 @@ const AdminOverview = () => {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
 
-            {/* ── Header ───────────────────────────────────────────────────── */}
+            {/* ── Header ──────────────────────────────────────────────────── */}
             <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
                 <div>
                     <h1 style={{
-                        fontFamily: "var(--font-display)",
+                        fontFamily: 'var(--font-display)',
                         fontSize: '1.05rem',
                         fontWeight: 900,
                         letterSpacing: '0.02em',
-
                         color: 'var(--text-primary)',
                         lineHeight: 1,
                     }}>
                         System Intelligence HQ
                     </h1>
                     <p style={{
-                        fontFamily: "var(--font-terminal)",
+                        fontFamily: 'var(--font-terminal)',
                         fontSize: '0.60rem',
                         color: 'var(--text-muted)',
                         marginTop: 6,
@@ -377,7 +344,7 @@ const AdminOverview = () => {
                     />
                     <div style={{ textAlign: 'right' }}>
                         <p style={{
-                            fontFamily: "var(--font-terminal)",
+                            fontFamily: 'var(--font-terminal)',
                             fontSize: '0.52rem',
                             color: 'var(--text-muted)',
                             letterSpacing: '0.02em',
@@ -385,7 +352,7 @@ const AdminOverview = () => {
                             AUTO-SYNC IN
                         </p>
                         <p style={{
-                            fontFamily: "var(--font-display)",
+                            fontFamily: 'var(--font-display)',
                             fontSize: '0.82rem',
                             fontWeight: 700,
                             color: 'var(--accent-light)',
@@ -396,35 +363,35 @@ const AdminOverview = () => {
                 </div>
             </div>
 
-            {/* ── Row 1 — KPI strip ────────────────────────────────────────── */}
+            {/* ── Row 1 — Unified KPI strip ───────────────────────────────── */}
             <div style={{ display: 'flex', gap: 12, alignItems: 'stretch' }}>
-                <HeroKpiCard
+                <KpiCard
                     label="Total Students"
                     value={stats?.total_students ?? '—'}
                     sub={`${subjects.length} active subjects`}
                     gradient="linear-gradient(135deg, #6b21a8 0%, #9d4edd 50%, #c026d3 100%)"
                 />
-                <HeroKpiCard
+                <KpiCard
                     label="AI Triage Accuracy"
                     value={aiAccuracy !== null ? `${aiAccuracy}` : '—'}
                     unit="%"
                     sub={telemetry ? `${telemetry.total_tickets ?? 0} tickets processed` : 'Awaiting data…'}
                     gradient="linear-gradient(135deg, #0891b2 0%, #06b6d4 50%, #22d3ee 100%)"
                 />
-                <KpiTile
+                <KpiCard
                     label="Faculty Members"
-                    vvalue={(stats?.total_faculty ?? facultyList.length) || '—'}
+                    value={(stats?.total_faculty ?? facultyList.length) || '—'}
                     sub={`${facultyBreakdown.atCap} at full load`}
                     color="var(--accent)"
                 />
-                <KpiTile
+                <KpiCard
                     label="Pending Enrollments"
                     value={pendingCount}
                     sub="Awaiting admin review"
                     color={pendingCount > 0 ? 'var(--color-warning)' : 'var(--color-success)'}
                     alert={pendingCount > 0}
                 />
-                <KpiTile
+                <KpiCard
                     label="Open Tickets"
                     value={openTickets}
                     sub={`of ${tickets.length} total`}
@@ -433,9 +400,7 @@ const AdminOverview = () => {
                 />
             </div>
 
-            {/* ── Row 2 — Radar | AI Overseer | Alert Feed ─────────────────── */}
-            {/* alignItems: stretch forces all three cards to the same height.   */}
-            {/* Equal 1fr columns — no card dominates visually.                  */}
+            {/* ── Row 2 — Radar | AI Overseer | Alert Feed ────────────────── */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, alignItems: 'stretch' }}>
                 <CyberPanel
                     title="Threat Scanner"
@@ -447,9 +412,6 @@ const AdminOverview = () => {
                     </div>
                 </CyberPanel>
 
-                {/* AISystemOverseer: 3D mouse-tracking robot head.
-                    Eyes + antenna tip shift cyan → red when systemAlert is true.
-                    noDonut prop tells it to skip HalfDonutArc (that data is in Row 1). */}
                 <CyberPanel
                     title="System Overseer"
                     subtitle="Alert-reactive AI indicator · hover to interact"
@@ -492,7 +454,7 @@ const AdminOverview = () => {
                 </CyberPanel>
             </div>
 
-            {/* ── Row 3 — Signal chart full width ──────────────────────────── */}
+            {/* ── Row 3 — Signal chart full width ─────────────────────────── */}
             <CyberPanel
                 title="Neural Confidence Trend"
                 subtitle="AI triage confidence over time — last 30 tickets"
@@ -500,7 +462,7 @@ const AdminOverview = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span className="live-dot" aria-hidden="true" />
                         <span style={{
-                            fontFamily: "var(--font-terminal)",
+                            fontFamily: 'var(--font-terminal)',
                             fontSize: '0.58rem',
                             color: 'var(--color-success)',
                             letterSpacing: '0.02em',
@@ -515,9 +477,8 @@ const AdminOverview = () => {
                 </div>
             </CyberPanel>
 
-            {/* ── Row 4 — Activity map + Faculty load ──────────────────────── */}
+            {/* ── Row 4 — Activity map + Faculty load ─────────────────────── */}
             <div style={{ display: 'grid', gridTemplateColumns: '5fr 3fr', gap: 16, alignItems: 'start' }}>
-
                 <CyberPanel
                     title="Triage Activity Map"
                     subtitle="Ticket distribution by department"
@@ -527,7 +488,6 @@ const AdminOverview = () => {
                     </div>
                 </CyberPanel>
 
-                {/* Faculty load — unique to this dashboard, not on any other page */}
                 <CyberPanel
                     title="Faculty Load Status"
                     subtitle={`${facultyList.length} faculty members`}
@@ -545,10 +505,9 @@ const AdminOverview = () => {
                         <div style={{ borderTop: '1px solid var(--border-subtle)', margin: '12px 0' }} />
 
                         <p style={{
-                            fontFamily: "var(--font-terminal)",
+                            fontFamily: 'var(--font-terminal)',
                             fontSize: '0.54rem',
                             letterSpacing: '0.02em',
-
                             color: 'var(--text-muted)',
                             marginBottom: 6,
                         }}>
@@ -557,7 +516,7 @@ const AdminOverview = () => {
 
                         {sortedFaculty.length === 0 ? (
                             <p style={{
-                                fontFamily: "var(--font-terminal)",
+                                fontFamily: 'var(--font-terminal)',
                                 fontSize: '0.63rem',
                                 color: 'var(--text-muted)',
                                 textAlign: 'center',
@@ -579,14 +538,13 @@ const AdminOverview = () => {
                                 background: 'transparent',
                                 border: '1px solid var(--border-default)',
                                 borderLeft: '2px solid var(--accent)',
-                                borderRadius: 6,
+                                borderRadius: 10,
                                 padding: '7px 12px',
                                 cursor: 'pointer',
-                                fontFamily: "var(--font-terminal)",
+                                fontFamily: 'var(--font-terminal)',
                                 fontSize: '0.58rem',
                                 letterSpacing: '0.02em',
                                 color: 'var(--accent)',
-
                                 textAlign: 'left',
                                 transition: 'background 0.15s',
                             }}

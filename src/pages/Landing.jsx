@@ -140,7 +140,6 @@ const Landing = () => {
       overflow: 'hidden',
     }}>
 
-      {/* Static ambient dot grid */}
       <div style={{
         position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none',
         backgroundImage: `radial-gradient(${P.goldBorder} 1px, transparent 1px)`,
@@ -155,10 +154,8 @@ const Landing = () => {
 
       <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
 
-        {/* ── Top accent bar ── */}
         <div style={{ height: 3, background: `linear-gradient(to right, ${P.black}, ${P.gold}, ${P.goldLight}, ${P.gold}, ${P.black})`, flexShrink: 0 }} />
 
-        {/* ── Hero ── */}
         <main style={{
           flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
           padding: isDesktop ? '5rem 3rem' : '3.5rem 1.25rem',
@@ -173,15 +170,13 @@ const Landing = () => {
             alignItems: 'center',
           }}>
 
-            {/* Left — headline + CTAs */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
 
-              {/* Crest + org label */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
                 {Icons.crest}
                 <div>
                   <div style={{ fontSize: '0.75rem', fontWeight: 700, color: P.gold, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                    NWSSU Systems
+                    NWSSU System
                   </div>
                   <div style={{ fontSize: '0.7rem', color: P.textMuted, marginTop: 2 }}>
                     College of Computing &amp; Information Science
@@ -189,7 +184,6 @@ const Landing = () => {
                 </div>
               </div>
 
-              {/* Headline */}
               <div>
                 <h1 style={{
                   fontSize: 'clamp(2.4rem, 5.5vw, 3.6rem)',
@@ -277,11 +271,11 @@ const Landing = () => {
                     e.currentTarget.style.background = 'transparent';
                   }}
                 >
-                  Staff Login
+                  Login
                 </button>
               </div>
 
-              {/* Trust indicators */}
+
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, paddingTop: 4 }}>
                 {['AI-Secured', 'Zero Data Retention', 'Real-Time'].map((tag, i) => (
                   <span key={i} style={{
@@ -296,7 +290,6 @@ const Landing = () => {
               </div>
             </div>
 
-            {/* Right — stepper card (desktop only) */}
             {isDesktop && (
               <div style={{
                 background: P.surface,
@@ -347,7 +340,6 @@ const Landing = () => {
           </div>
         </main>
 
-        {/* ── Mobile stepper ── */}
         {!isDesktop && (
           <div style={{
             display: 'flex', justifyContent: 'center', alignItems: 'center',
@@ -378,7 +370,6 @@ const Landing = () => {
           </div>
         )}
 
-        {/* ── Features bar ── */}
         <div style={{
           borderTop: `1px solid ${P.border}`,
           background: P.depth,
@@ -409,20 +400,18 @@ const Landing = () => {
           </div>
         </div>
 
-        {/* ── Footer ── */}
         <footer style={{
           textAlign: 'center', padding: '1.125rem 1.25rem',
           fontSize: '0.72rem', color: P.textMuted,
           borderTop: `1px solid ${P.borderSoft}`,
           fontFamily: P.fontMono, letterSpacing: '0.03em',
         }}>
-          <span>CCIS — NWSSU Systems</span>
+          <span>CCIS — NWSSU System</span>
           <span style={{ margin: '0 10px', opacity: 0.4 }}>|</span>
           <span>Secured by AI Vision · © 2025 · Garcia, Adrian</span>
         </footer>
       </div>
 
-      {/* ── Gatekeeper Modal ── */}
       {showModal && (
         <div
           onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}

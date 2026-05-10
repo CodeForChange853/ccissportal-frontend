@@ -1,8 +1,7 @@
-// frontend/src/api/client.js
 import axios from 'axios';
 
 const apiClient = axios.create({
-  baseURL: 'https://ccissportal-backend.onrender.com',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -19,7 +18,11 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
 
-    if (error.response?.status === 503 && error.response?.data?.maintenance) {
+    const maintenanceInfo = error.response?.data?.detail?.maintenance ? error.response.data.detail : error.response?.data;
+    
+    if (error.response?.status === 503 && maintenanceInfo?.maintenance) {
+      sessionStorage.setItem('maintenance_reason', maintenanceInfo.reason || '');
+      sessionStorage.setItem('maintenance_message', maintenanceInfo.message || '');
       window.location.href = '/maintenance';
       return Promise.reject(error);
     }
@@ -41,12 +44,13 @@ const client = {
   put: (url, data, config) => apiClient.put(url, data, config),
   patch: (url, data, config) => apiClient.patch(url, data, config),
   delete: (url, config) => apiClient.delete(url, config),
+  
+  checkSystemStatus: () => axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/`),
 
   // ── Auth 
   login: (credentials) => apiClient.post('/authentication/login', credentials),
   register: (data) => apiClient.post('/authentication/register', data),
 
-  // ── Document scanning (Registration wizard) 
   scanDocument: (file, docType) => {
     const fd = new FormData();
     fd.append('uploaded_file', file);
@@ -56,7 +60,6 @@ const client = {
   },
   submitRegistration: (data) => apiClient.post('/authentication/register', data),
 
-  // ── Student Dashboard 
   getStudentProfile: () => apiClient.get('/student/profile'),
   getMyGrades: () => apiClient.get('/student/my-grades'),
   getSchedule: () => apiClient.get('/student/schedule'),
@@ -71,23 +74,17 @@ const client = {
   },
   finalizeCorEnrollment: (data) => apiClient.post('/student/register/finalize-cor', data),
 
-  // ── Enrollment (student-facing) 
   submitEnrollment: (data) => apiClient.post('/enrollment/submit', data),
 
-  // ── Curriculum 
-  // NOTE: use adminApi.js for admin operations — these are kept for
   getAllSubjects: () => apiClient.get('/enrollment/curriculum'),
   addSubject: (data) => apiClient.post('/enrollment/curriculum/add', data),
   deleteSubject: (subjectId) => apiClient.delete(`/enrollment/curriculum/${subjectId}/remove`),
 
-  // ── Support Tickets 
   getMyTickets: () => apiClient.get('/support/my-tickets'),
   createTicket: (t) => apiClient.post('/support/submit', t),
-  // Admin-only
   getAllTickets: () => apiClient.get('/support/all'),
   resolveTicket: (id) => apiClient.patch(`/support/${id}/resolve`),
 
-  // ── Faculty 
   getFacultyLoad: () => apiClient.get('/faculty/load'),
 };
 

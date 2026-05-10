@@ -1,5 +1,3 @@
-// frontend/src/features/admin/components/dashboard/RadarScanner.jsx
-
 import React, { useRef, useEffect, useCallback, useMemo } from 'react';
 
 const SIZE = 300;
