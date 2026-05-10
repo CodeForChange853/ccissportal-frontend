@@ -12,7 +12,12 @@ const NotificationBell = () => {
         } catch { /* silent */ }
     }, []);
 
-    useEffect(() => { load(); const t = setInterval(load, 60_000); return () => clearInterval(t); }, [load]);
+    // Disabled polling to prevent backend spam since it is currently non-functional
+    useEffect(() => { 
+        // load(); 
+        // const t = setInterval(load, 60_000); 
+        // return () => clearInterval(t); 
+    }, [load]);
 
     const dismiss = async (id) => {
         await client.post(`/notifications/mark-read/${id}`);
