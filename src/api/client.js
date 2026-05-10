@@ -50,6 +50,8 @@ const client = {
   // ── Auth 
   login: (credentials) => apiClient.post('/authentication/login', credentials),
   register: (data) => apiClient.post('/authentication/register', data),
+  validatePreReg: (student_number, passkey_code) => 
+    apiClient.post('/authentication/validate-pre-reg', { student_number, passkey_code }),
 
   scanDocument: (file, docType) => {
     const fd = new FormData();

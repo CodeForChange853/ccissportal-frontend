@@ -221,13 +221,26 @@ const RegistrationWizard = () => {
         let parsed = {};
         try { parsed = JSON.parse(result.extracted_ai_data); } catch { /* ignore */ }
         const ex = parsed.extracted_data || {};
+        
+        // ── Validation: Check if ID number matches claimed studentId ──
+        const extractedId = (ex.student_id || '').trim();
+        const claimedId = (regData.studentId || '').trim();
+        
+        // Use fuzzy match or strict match? Let's go with strict for now as requested.
+        // We strip non-alphanumeric chars just in case of formatting diffs (e.g. 23-123 vs 23123)
+        const normalize = (s) => s.replace(/[^a-zA-Z0-9]/g, '');
+        
+        if (extractedId && normalize(extractedId) !== normalize(claimedId)) {
+           throw new Error(`ID Mismatch: The ID card shows number "${extractedId}", but you entered "${claimedId}". Please use the correct ID card.`);
+        }
+
         setRegData(prev => ({
           ...prev, idFile: file,
           fullName: ex.full_name || prev.fullName,
           course: ex.course || prev.course,
           verificationToken: scanInit.secure_scan_token,
         }));
-        showToast('Identity scan complete!');
+        showToast('Identity verified and matched!');
       }
       setStep(2);
     } catch (err) {

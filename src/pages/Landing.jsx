@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import client from '../api/client';
 
 const P = {
   page: '#F2F2F2',
@@ -122,12 +123,18 @@ const Landing = () => {
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     if (!formData.studentId.trim()) { setError('Please enter a valid Student ID.'); return; }
     if (!formData.passkey.trim()) { setError('Please enter the system passkey.'); return; }
-    navigate('/register', { state: { claimedId: formData.studentId, enteredPasskey: formData.passkey } });
+    
+    try {
+      await client.validatePreReg(formData.studentId, formData.passkey);
+      navigate('/register', { state: { claimedId: formData.studentId, enteredPasskey: formData.passkey } });
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Identity verification failed. Please check your credentials.');
+    }
   };
 
   return (
