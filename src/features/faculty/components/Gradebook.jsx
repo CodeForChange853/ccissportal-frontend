@@ -132,15 +132,26 @@ const Gradebook = ({ subject }) => {
         for (let i = 1; i <= quizCount; i++)
             quizzes.push({ score: rec[`quiz_${i}_score`], total: rec[`quiz_${i}_total`] });
         await saveGradeLocally({ ...rec, subject_code: subject.code });
-        await addToSyncQueue({
-            student_account_id: rec.student_account_id, subject_code: subject.code,
-            raw_score_data: { ...(rec.raw_score_data || {}), quiz_count: quizCount, quizzes, quiz_score: rec.quiz_1_score, quiz_total: rec.quiz_1_total },
+        // Ensure we are sending a clean payload with correct types
+        const syncItem = {
+            // Fallback to parseInt(rec.student_id) if account_id is missing (from old cache)
+            student_account_id: parseInt(rec.student_account_id || rec.student_id),
+            subject_code: subject.code,
             system_grade: parseFloat(rec.system_grade || 0),
             final_grade: parseFloat(rec.final_grade || 0),
             override_reason: rec.override_reason || null,
-        });
-        const queue = await getSyncQueue();
-        setPendingSync(queue.length);
+            completion_status: rec.status || 'IN PROGRESS'
+        };
+
+        // Only add if we have a valid numeric account ID
+        if (!isNaN(syncItem.student_account_id)) {
+            await addToSyncQueue(syncItem);
+            const queue = await getSyncQueue();
+            setPendingSync(queue.length);
+        } else {
+            console.error('[ERROR] Cannot sync record: missing student_account_id', rec);
+            showToast('Sync error: Missing student ID. Please reload the roster.', 'error');
+        }
     };
 
     const handleSync = async () => {
@@ -152,7 +163,24 @@ const Gradebook = ({ subject }) => {
                 showToast(`Synced ${result.synced_records} records!`);
                 await clearSyncQueue(); setPendingSync(0); setIsOffline(false);
             }
-        } catch { showToast('Sync failed — server unreachable.', 'error'); }
+        } catch (err) { 
+            console.error('[ERROR] Sync failed:', err);
+            const is422 = err.response?.status === 422;
+            showToast(is422 ? 'Sync failed: Data format mismatch (422).' : 'Sync failed — server unreachable.', 'error'); 
+            
+            if (is422) {
+                // If the queue is poisoned with bad data, we might need to clear it
+                console.warn('[FIX] If sync persists in failing, try clearing the browser cache or sync queue.');
+            }
+        }
+    };
+
+    const handleClearQueue = async () => {
+        if (window.confirm('This will delete all unsynced grade changes. Proceed?')) {
+            await clearSyncQueue();
+            setPendingSync(0);
+            showToast('Sync queue cleared.');
+        }
     };
 
     const handleFileUpload = (e) => {
@@ -258,6 +286,14 @@ const Gradebook = ({ subject }) => {
                         <span style={{ opacity: 0.7 }}>📄</span> Bulk .xlsx
                         <input type="file" accept=".xlsx" style={{ display: 'none' }} onChange={handleFileUpload} />
                     </label>
+
+                    {pendingSync > 0 && (
+                        <button style={ghostBtn({ color: 'var(--color-danger)', borderColor: 'var(--color-danger-bd)' })}
+                            onClick={handleClearQueue}
+                        >
+                            🗑️ Clear Queue
+                        </button>
+                    )}
 
                     <button
                         onClick={handleSync}

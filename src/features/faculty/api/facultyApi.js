@@ -16,6 +16,7 @@ export const facultyApi = {
     },
 
     syncGrades: async (updates) => {
+        console.log('[DEBUG] Syncing Grades Payload:', { updates });
         const res = await apiClient.post('/faculty/sync-grades', { updates });
         return res.data;
     },
