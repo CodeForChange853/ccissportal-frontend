@@ -28,7 +28,7 @@ export const studentApi = {
         apiClient.get(`/documents/status/${scanToken}`).then(r => r.data),
         
     fetchAvailableFaculty: () => apiClient.get('/student/consultations/faculty').then(r => r.data),
-    fetchFacultyTimeChunks: (facultyId, date) => apiClient.get(`/student/consultations/faculty/${facultyId}/available-slots?date=${date}`).then(r => r.data),
+    fetchFacultyTimeChunks: (facultyId, date) => apiClient.get(`/student/consultations/faculty/${facultyId}/available-slots?target_date=${date}`).then(r => r.data),
     bookConsultation: (data) => apiClient.post('/student/consultations/requests', data).then(r => r.data),
     fetchMyConsultations: () => apiClient.get('/student/consultations/requests').then(r => r.data),
 };
