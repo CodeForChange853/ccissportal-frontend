@@ -51,7 +51,7 @@ const QueueRow = ({ req, selected, onClick, isChecked, onToggleCheck }) => {
             >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                     <span style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.72rem', fontWeight: 600, color: selected ? 'var(--neon-cyan)' : 'var(--text-primary)' }}>
-                        {req.full_name || `Student #${req.student_account_id}`}
+                        {req.student_name || `Student #${req.student_number || req.student_account_id}`}
                     </span>
                     <StatusBadge variant={ENROLLMENT_STATUS_VARIANT[status] ?? 'muted'} label={status} showDot={false} />
                 </div>
@@ -84,7 +84,7 @@ const DetailPanel = ({ req, onDecision, submitting }) => {
 
     const rows = [
         { label: 'Request ID', value: `#${req.request_id}` },
-        { label: 'Student ID', value: req.student_account_id },
+        { label: 'Student ID', value: req.student_number || req.student_account_id },
         { label: 'Year Level', value: `Year ${req.target_year_level}` },
         { label: 'Semester', value: `Semester ${req.target_semester}` },
         { label: 'Status', value: status },
@@ -98,7 +98,7 @@ const DetailPanel = ({ req, onDecision, submitting }) => {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-            <CyberPanel title={req.full_name || `Student #${req.student_account_id}`} subtitle={`Enrollment Request #${req.request_id}`}>
+            <CyberPanel title={req.student_name || `Student #${req.student_number || req.student_account_id}`} subtitle={`Enrollment Request #${req.request_id}`}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                     {rows.map(({ label, value }) => (
                         <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderBottom: '1px solid var(--border-subtle)' }}>
