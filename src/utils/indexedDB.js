@@ -1,13 +1,14 @@
 import { openDB } from 'idb';
 
 const DB_NAME = 'enrollmate';
-const DB_VERSION = 3;
+const DB_VERSION = 4; // Bump version to force refresh
 
 export const initDB = async () => {
   return openDB(DB_NAME, DB_VERSION, {
     upgrade(db, oldVersion) {
-      // Delete old broken stores on upgrade
-      if (oldVersion < 2) {
+      // CLEAR EVERYTHING if we are moving to version 4 to fix the "undefined" bug
+      if (oldVersion < 4) {
+        console.log('[IDB] Upgrading to V4: Clearing old stores...');
         if (db.objectStoreNames.contains('grades')) db.deleteObjectStore('grades');
         if (db.objectStoreNames.contains('syncQueue')) db.deleteObjectStore('syncQueue');
       }
@@ -47,16 +48,22 @@ export const getLocalGrades = async (subjectCode) => {
 };
 // --- SYNC QUEUE OPERATIONS ---
 
-export const addToSyncQueue = async (updatePayload) => {
+export const addToSyncQueue = async (item) => {
   const db = await initDB();
-  const key = makeKey(updatePayload.student_id, updatePayload.subject_code);
+  const studentId = item.student_account_id || item.student_id;
+  const compositeKey = `${studentId}__${item.subject_code}`;
+  
+  if (!studentId) {
+    console.error('[IDB] Cannot add to queue: missing studentId', item);
+    return;
+  }
 
-  await db.put('syncQueue', {
-    ...updatePayload,
-    compositeKey: key,
-    client_updated_at: Date.now(),
+  return db.put('syncQueue', { 
+    ...item, 
+    compositeKey,
+    student_account_id: parseInt(studentId),
+    client_updated_at: Date.now() 
   });
-  console.log('⚠️ Offline: Sync queue updated', key);
 };
 
 export const getSyncQueue = async () => {

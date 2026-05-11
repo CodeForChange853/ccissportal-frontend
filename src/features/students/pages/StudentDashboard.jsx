@@ -391,18 +391,19 @@ const StudentDashboard = () => {
     const gwaMeta = useMemo(() => gwaLabel(gwa), [gwa]);
 
     const { earned, enrolledUnits, passed, failed, cleared, sparkData } = useMemo(() => {
-        const earned = grades.filter(g => g.completion_status === 'PASSED').reduce((s, g) => s + (g.units || 3), 0);
-        const enrolledUnits = grades.filter(g => g.completion_status === 'ENROLLED').reduce((s, g) => s + (g.units || 3), 0);
+        const earned = grades.filter(g => g.completion_status === 'PASSED').reduce((s, g) => s + (g.credit_units || 3), 0);
+        const enrolledUnits = grades.filter(g => g.completion_status === 'ENROLLED').reduce((s, g) => s + (g.credit_units || 3), 0);
         const passed = grades.filter(g => g.completion_status === 'PASSED').length;
         const failed = grades.filter(g => g.completion_status === 'FAILED').length;
         const cleared = profile?.clearance?.status === 'CLEARED';
 
         const bySem = {};
         grades
-            .filter(g => g.final_grade && g.final_grade !== 'N/A' && g.completion_status !== 'ENROLLED')
+            .filter(g => g.final_grade != null && g.final_grade !== 'N/A' && g.completion_status !== 'ENROLLED')
             .forEach(g => {
-                if (!bySem[g.semester]) bySem[g.semester] = [];
-                bySem[g.semester].push({ grade: parseFloat(g.final_grade), units: g.units || 3 });
+                const semStr = `Year ${g.target_year_level} Sem ${g.target_semester}`;
+                if (!bySem[semStr]) bySem[semStr] = [];
+                bySem[semStr].push({ grade: parseFloat(g.final_grade), units: g.credit_units || 3 });
             });
         const sparkData = Object.entries(bySem)
             .sort(([a], [b]) => a.localeCompare(b))

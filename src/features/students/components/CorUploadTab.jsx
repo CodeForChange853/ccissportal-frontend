@@ -16,7 +16,7 @@ const CorUploadTab = ({ onSuccess }) => {
     const handleFileChange = (e) => {
         const f = e.target.files[0];
         if (!f) return;
-        if (f.size > 10 * 1024 * 1024) { setError('Max file size is 10 MB.'); return; }
+        if (f.size > 5 * 1024 * 1024) { setError('Max file size is 5 MB.'); return; }
         setCorFile(f);
         setCorPreview(URL.createObjectURL(f));
         setSubjects(null);
@@ -156,7 +156,7 @@ const CorUploadTab = ({ onSuccess }) => {
                     </div>
                     <p className="font-black text-white text-base" style={{ fontFamily: 'var(--student-font-display)' }}>NexEnroll Secure Upload</p>
                     <p className="text-[10px] text-student-gold font-mono uppercase mt-2 tracking-widest">Tap to browse files</p>
-                    <p className="text-[10px] text-student-white-dim/30 mt-4 font-mono">JPG · PNG · PDF · MAX 10MB</p>
+                    <p className="text-[10px] text-student-white-dim/30 mt-4 font-mono">JPG · PNG · PDF · MAX 5MB</p>
                     <input
                         type="file"
                         className="hidden"

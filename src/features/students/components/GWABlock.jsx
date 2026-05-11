@@ -88,7 +88,7 @@ const GWABlock = ({ profile, gwa, gwaMeta, sparkData, cleared }) => (
         </div>
         
         {sparkData.length > 1 && (
-            <Spark data={sparkData} color="var(--student-gold)" height={65} />
+            <Spark data={sparkData} color="#C9A84C" height={65} />
         )}
 
         <div className="mt-4 pt-4 border-t border-white/5 flex justify-between items-center">

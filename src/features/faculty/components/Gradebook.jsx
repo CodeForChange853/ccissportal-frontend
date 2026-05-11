@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
+import { openDB } from 'idb';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-quartz.css';
 
@@ -10,7 +11,7 @@ import { facultyApi } from '../api/facultyApi';
 import { useTheme } from '../../../context/ThemeContext';
 import {
     saveGradeLocally, getLocalGrades,
-    addToSyncQueue, getSyncQueue, clearSyncQueue,
+    addToSyncQueue, getSyncQueue, clearSyncQueue, clearSyncedExceptSkipped,
 } from '../../../utils/indexedDB';
 
 const Gradebook = ({ subject }) => {
@@ -27,36 +28,69 @@ const Gradebook = ({ subject }) => {
     const showToast = (message, type = 'success') => setToast({ message, type });
 
     const colDefs = useMemo(() => {
-        const cols = [
-            { field: 'student_id', headerName: 'Student ID', pinned: 'left', width: 130, editable: false },
-            { field: 'student_name', headerName: 'Name', pinned: 'left', width: 200, editable: false },
-        ];
-        for (let i = 1; i <= quizCount; i++) {
-            cols.push(
-                { field: `quiz_${i}_score`, headerName: `Quiz ${i} Score`, editable: true, width: 110 },
-                { field: `quiz_${i}_total`, headerName: `Quiz ${i} Total`, editable: true, width: 110 },
-            );
-        }
-        cols.push({
-            field: 'quiz_percentage', headerName: 'Percentage (%)', width: 140, editable: false,
-            valueGetter: (params) => {
-                let ts = 0, ti = 0, ok = false;
-                for (let i = 1; i <= quizCount; i++) {
-                    const s = parseFloat(params.data?.[`quiz_${i}_score`]);
-                    const t = parseFloat(params.data?.[`quiz_${i}_total`]);
-                    if (!isNaN(s) && !isNaN(t) && t > 0) { ts += s; ti += t; ok = true; }
+        const getPeriodChildren = (periodPrefix, periodName) => [
+            ...Array.from({ length: quizCount }, (_, i) => ([
+                { field: `${periodPrefix}_quiz_${i + 1}_score`, headerName: `Q${i + 1} Score`, editable: true, width: 100 },
+                { field: `${periodPrefix}_quiz_${i + 1}_total`, headerName: `Q${i + 1} Total`, editable: true, width: 100 },
+            ])).flat(),
+            { field: `${periodPrefix}_assign_score`, headerName: 'Assign Score', editable: true, width: 110 },
+            { field: `${periodPrefix}_assign_total`, headerName: 'Assign Total', editable: true, width: 110 },
+            { field: `${periodPrefix}_exam_score`, headerName: 'Exam Score', editable: true, width: 110 },
+            { field: `${periodPrefix}_exam_total`, headerName: 'Exam Total', editable: true, width: 110 },
+            { 
+                headerName: `${periodName} %`, width: 110, editable: false,
+                cellStyle: { background: 'rgba(52, 152, 219, 0.1)', fontWeight: 'bold' },
+                valueGetter: (params) => {
+                    const data = params.data || {};
+                    let qScore = 0, qTotal = 0;
+                    for (let i = 1; i <= quizCount; i++) {
+                        qScore += parseFloat(data[`${periodPrefix}_quiz_${i}_score`] || 0);
+                        qTotal += parseFloat(data[`${periodPrefix}_quiz_${i}_total`] || 0);
+                    }
+                    const aScore = parseFloat(data[`${periodPrefix}_assign_score`] || 0);
+                    const aTotal = parseFloat(data[`${periodPrefix}_assign_total`] || 100);
+                    const eScore = parseFloat(data[`${periodPrefix}_exam_score`] || 0);
+                    const eTotal = parseFloat(data[`${periodPrefix}_exam_total`] || 100);
+                    
+                    const qPct = qTotal > 0 ? (qScore / qTotal * 100) : 0;
+                    const aPct = aTotal > 0 ? (aScore / aTotal * 100) : 0;
+                    const ePct = eTotal > 0 ? (eScore / eTotal * 100) : 0;
+                    return ((qPct * 0.4) + (aPct * 0.2) + (ePct * 0.4)).toFixed(2) + '%';
                 }
-                return ok && ti > 0 ? ((ts / ti) * 100).toFixed(2) + '%' : '';
             },
-            cellStyle: { fontWeight: 'bold', color: 'var(--accent)' },
-        });
-        cols.push(
-            { field: 'system_grade', headerName: 'Calculated Grade', editable: true, width: 155 },
-            { field: 'final_grade', headerName: 'Final Grade', editable: true, width: 120, cellStyle: { fontWeight: 'bold' } },
-            { field: 'override_reason', headerName: 'Override Reason', editable: true, width: 250, tooltipField: 'override_reason' },
-            { field: 'status', headerName: 'Status', editable: false, width: 120 },
-        );
-        return cols;
+        ];
+
+        return [
+            {
+                headerName: 'Student Information',
+                children: [
+                    { field: 'student_id', headerName: 'Student ID', pinned: 'left', width: 130, editable: false },
+                    { field: 'student_name', headerName: 'Name', pinned: 'left', width: 200, editable: false },
+                ]
+            },
+            {
+                headerName: 'Midterm Period (40% Weight)',
+                children: getPeriodChildren('mid', 'Midterm')
+            },
+            {
+                headerName: 'Final Period (60% Weight)',
+                children: getPeriodChildren('fin', 'Final')
+            },
+            {
+                headerName: 'Official Academic Record',
+                children: [
+                    { 
+                        field: 'system_grade', headerName: 'Calculated Grade', width: 150, editable: false,
+                        cellStyle: { color: 'var(--accent)', fontWeight: 'bold' }
+                    },
+                    { 
+                        field: 'final_grade', headerName: 'Override Grade', editable: true, width: 130,
+                    },
+                    { field: 'override_reason', headerName: 'Reason', editable: true, width: 200 },
+                    { field: 'status', headerName: 'Status', width: 120 },
+                ]
+            }
+        ];
     }, [quizCount]);
 
     useEffect(() => {
@@ -72,45 +106,65 @@ const Gradebook = ({ subject }) => {
         (async () => {
             try {
                 const fresh = await facultyApi.fetchClassRoster(subject.code);
-                let maxQ = 1;
-                fresh.forEach(r => { const q = r.raw_score_data?.quiz_count || 1; if (q > maxQ) maxQ = q; });
-                setQuizCount(maxQ);
                 const mapped = fresh.map(r => {
-                    const raw = r.raw_score_data || {};
+                    const raw = r.raw_scores ? (typeof r.raw_scores === 'string' ? JSON.parse(r.raw_scores) : r.raw_scores) : {};
                     const res = { ...r };
-                    res.quiz_1_score = raw.quizzes?.[0]?.score ?? raw.quiz_score ?? '';
-                    res.quiz_1_total = raw.quizzes?.[0]?.total ?? raw.quiz_total ?? '';
-                    for (let i = 2; i <= maxQ; i++) {
-                        res[`quiz_${i}_score`] = raw.quizzes?.[i - 1]?.score ?? '';
-                        res[`quiz_${i}_total`] = raw.quizzes?.[i - 1]?.total ?? '';
-                    }
+                    // Map Midterm
+                    const mid = raw.midterm || {};
+                    (mid.quizzes || []).forEach((q, i) => {
+                        res[`mid_quiz_${i + 1}_score`] = q.score || '';
+                        res[`mid_quiz_${i + 1}_total`] = q.total || '';
+                    });
+                    res.mid_assign_score = mid.assignment?.score || '';
+                    res.mid_assign_total = mid.assignment?.total || '';
+                    res.mid_exam_score = mid.exam?.score || '';
+                    res.mid_exam_total = mid.exam?.total || '';
+                    // Map Final
+                    const fin = raw.final || {};
+                    (fin.quizzes || []).forEach((q, i) => {
+                        res[`fin_quiz_${i + 1}_score`] = q.score || '';
+                        res[`fin_quiz_${i + 1}_total`] = q.total || '';
+                    });
+                    res.fin_assign_score = fin.assignment?.score || '';
+                    res.fin_assign_total = fin.assignment?.total || '';
+                    res.fin_exam_score = fin.exam?.score || '';
+                    res.fin_exam_total = fin.exam?.total || '';
                     return res;
                 });
                 setRowData(mapped);
                 setIsOffline(false);
                 await Promise.all(mapped.map(r => saveGradeLocally({ ...r, subject_code: subject.code })));
-            } catch {
+            } catch (err) {
+                console.error("Fetch failed:", err);
                 setIsOffline(true);
                 const cached = await getLocalGrades(subject.code);
                 if (cached.length > 0) {
-                    let maxQ = 1;
-                    cached.forEach(r => { const q = r.raw_score_data?.quiz_count || 1; if (q > maxQ) maxQ = q; });
-                    setQuizCount(maxQ);
                     const mapped = cached.map(r => {
-                        const raw = r.raw_score_data || {};
+                        const raw = r.raw_scores ? (typeof r.raw_scores === 'string' ? JSON.parse(r.raw_scores) : r.raw_scores) : {};
                         const res = { ...r };
-                        res.quiz_1_score = raw.quizzes?.[0]?.score ?? raw.quiz_score ?? r.quiz_score ?? '';
-                        res.quiz_1_total = raw.quizzes?.[0]?.total ?? raw.quiz_total ?? r.quiz_total ?? '';
-                        for (let i = 2; i <= maxQ; i++) {
-                            res[`quiz_${i}_score`] = raw.quizzes?.[i - 1]?.score ?? '';
-                            res[`quiz_${i}_total`] = raw.quizzes?.[i - 1]?.total ?? '';
-                        }
+                        // Repeat mapping for cache
+                        const mid = raw.midterm || {};
+                        (mid.quizzes || []).forEach((q, i) => {
+                            res[`mid_quiz_${i + 1}_score`] = q.score || '';
+                            res[`mid_quiz_${i + 1}_total`] = q.total || '';
+                        });
+                        res.mid_assign_score = mid.assignment?.score || '';
+                        res.mid_assign_total = mid.assignment?.total || '';
+                        res.mid_exam_score = mid.exam?.score || '';
+                        res.mid_exam_total = mid.exam?.total || '';
+                        const fin = raw.final || {};
+                        (fin.quizzes || []).forEach((q, i) => {
+                            res[`fin_quiz_${i + 1}_score`] = q.score || '';
+                            res[`fin_quiz_${i + 1}_total`] = q.total || '';
+                        });
+                        res.fin_assign_score = fin.assignment?.score || '';
+                        res.fin_assign_total = fin.assignment?.total || '';
+                        res.fin_exam_score = fin.exam?.score || '';
+                        res.fin_exam_total = fin.exam?.total || '';
                         return res;
                     });
                     setRowData(mapped);
                     showToast('Offline: Showing cached grades.', 'error');
-                } else {
-                    showToast('Offline: No cached data found.', 'error');
                 }
             }
             const queue = await getSyncQueue();
@@ -120,37 +174,62 @@ const Gradebook = ({ subject }) => {
 
     const onCellValueChanged = async (event) => {
         const rec = event.data;
-        if (event.column.colId === 'final_grade' || event.column.colId === 'override_reason') {
-            if (rec.final_grade !== rec.system_grade && !rec.override_reason?.trim()) {
-                showToast('An override reason must be provided before committing the grade.', 'error');
-                if (event.column.colId === 'final_grade')
-                    event.node.setDataValue('final_grade', event.oldValue || rec.system_grade);
-                return;
-            }
+        
+        // Build the raw_scores object with Score/Total pairs
+        const midQuizzes = [];
+        const finQuizzes = [];
+        for (let i = 1; i <= quizCount; i++) {
+            midQuizzes.push({
+                score: parseFloat(rec[`mid_quiz_${i}_score`]) || 0,
+                total: parseFloat(rec[`mid_quiz_${i}_total`]) || 0
+            });
+            finQuizzes.push({
+                score: parseFloat(rec[`fin_quiz_${i}_score`]) || 0,
+                total: parseFloat(rec[`fin_quiz_${i}_total`]) || 0
+            });
         }
-        const quizzes = [];
-        for (let i = 1; i <= quizCount; i++)
-            quizzes.push({ score: rec[`quiz_${i}_score`], total: rec[`quiz_${i}_total`] });
-        await saveGradeLocally({ ...rec, subject_code: subject.code });
-        // Ensure we are sending a clean payload with correct types
+
+        const raw_scores = {
+            midterm: {
+                quizzes: midQuizzes,
+                assignment: {
+                    score: parseFloat(rec.mid_assign_score) || 0,
+                    total: parseFloat(rec.mid_assign_total) || 0
+                },
+                exam: {
+                    score: parseFloat(rec.mid_exam_score) || 0,
+                    total: parseFloat(rec.mid_exam_total) || 0
+                }
+            },
+            final: {
+                quizzes: finQuizzes,
+                assignment: {
+                    score: parseFloat(rec.fin_assign_score) || 0,
+                    total: parseFloat(rec.fin_assign_total) || 0
+                },
+                exam: {
+                    score: parseFloat(rec.fin_exam_score) || 0,
+                    total: parseFloat(rec.fin_exam_total) || 0
+                }
+            }
+        };
+
+        await saveGradeLocally({ ...rec, raw_scores, subject_code: subject.code });
+
         const syncItem = {
-            // Fallback to parseInt(rec.student_id) if account_id is missing (from old cache)
             student_account_id: parseInt(rec.student_account_id || rec.student_id),
+            curriculum_subject_id: parseInt(rec.curriculum_subject_id),
             subject_code: subject.code,
-            system_grade: parseFloat(rec.system_grade || 0),
-            final_grade: parseFloat(rec.final_grade || 0),
+            raw_scores: raw_scores,
+            final_grade: rec.final_grade !== undefined && rec.final_grade !== '' ? parseFloat(rec.final_grade) : null,
             override_reason: rec.override_reason || null,
             completion_status: rec.status || 'IN PROGRESS'
         };
 
-        // Only add if we have a valid numeric account ID
         if (!isNaN(syncItem.student_account_id)) {
             await addToSyncQueue(syncItem);
             const queue = await getSyncQueue();
             setPendingSync(queue.length);
-        } else {
-            console.error('[ERROR] Cannot sync record: missing student_account_id', rec);
-            showToast('Sync error: Missing student ID. Please reload the roster.', 'error');
         }
     };
 
@@ -160,8 +239,14 @@ const Gradebook = ({ subject }) => {
         try {
             const result = await facultyApi.syncGrades(queue);
             if (result.status === 'SUCCESS') {
-                showToast(`Synced ${result.synced_records} records!`);
-                await clearSyncQueue(); setPendingSync(0); setIsOffline(false);
+                showToast(`Synced ${result.synced_records || result.synced_count || 0} records!`);
+                if (result.skipped_records > 0 || result.skipped_count > 0) {
+                    showToast(`${result.skipped_records || result.skipped_count} records skipped due to conflict.`, 'warning');
+                }
+                await clearSyncedExceptSkipped(result.skipped_keys || []);
+                const remaining = await getSyncQueue();
+                setPendingSync(remaining.length);
+                setIsOffline(false);
             }
         } catch (err) { 
             console.error('[ERROR] Sync failed:', err);
@@ -279,6 +364,20 @@ const Gradebook = ({ subject }) => {
                             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                         >− Quiz</button>
                     )}
+
+                    <button 
+                        style={ghostBtn({ color: '#3498db', borderColor: '#3498db' })}
+                        onClick={async () => {
+                            if (window.confirm('This will refresh your local student list to fix connection issues. Continue?')) {
+                                await clearSyncQueue();
+                                const db = await openDB('enrollmate', 4);
+                                await db.clear('grades');
+                                window.location.reload();
+                            }
+                        }}
+                    >
+                        🔧 Repair
+                    </button>
 
                     <div style={{ width: 1, height: 20, background: 'var(--border-subtle)', margin: '0 2px' }} />
 

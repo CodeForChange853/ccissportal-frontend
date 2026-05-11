@@ -5,7 +5,7 @@ export const studentApi = {
     fetchGrades: () => apiClient.get('/student/my-grades').then(r => r.data),
     fetchSchedule: () => apiClient.get('/student/schedule').then(r => r.data),
     fetchEnrollmentStatus: () => apiClient.get('/student/enrollment-status').then(r => r.data),
-    fetchAcademicStanding: () => apiClient.get('/dashboards/student/academic-standing').then(r => r.data),
+    fetchAcademicStanding: () => apiClient.get('/student/academic-standing').then(r => r.data),
 
     submitSupportTicket: (ticketData) => apiClient.post('/support/submit', ticketData).then(r => r.data),
 
@@ -23,6 +23,16 @@ export const studentApi = {
             target_semester: 1,
             document_verification_token: scanToken,
         }).then(r => r.data),
+
+    submitSmartEnrollment: async (payload) => {
+        const response = await apiClient.post('/enrollment/submit', {
+            target_year_level: payload.target_year_level,
+            target_semester: payload.target_semester,
+            document_verification_token: null,
+            extracted_subjects: payload.extracted_subjects || null
+        });
+        return response.data;
+    },
 
     checkScanStatus: (scanToken) =>
         apiClient.get(`/documents/status/${scanToken}`).then(r => r.data),

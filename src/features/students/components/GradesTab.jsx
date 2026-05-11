@@ -11,7 +11,12 @@ const GradeCard = ({ grade }) => {
         ENROLLED: { color: 'var(--student-gold)', label: 'Enrolled' },
     }[grade.completion_status] || { color: 'var(--student-white-dim)', label: grade.completion_status };
 
-    const gradeVal = grade.final_grade === 'N/A' ? '—' : (grade.final_grade || '—');
+    // Senior Logic: Show Final Grade if available, otherwise show the System Calculated Grade
+    const rawGrade = (grade.final_grade != null && grade.final_grade !== 'N/A')
+        ? grade.final_grade 
+        : ((grade.system_grade != null && grade.system_grade !== 'N/A') ? grade.system_grade : null);
+    
+    const gradeVal = rawGrade || '—';
 
     return (
         <div className="rounded-xl p-4 flex items-center gap-4 transition-all hover:bg-white/[0.02]"
@@ -30,8 +35,8 @@ const GradeCard = ({ grade }) => {
                 </div>
                 <p className="text-xs text-student-white-dim truncate mt-0.5">{grade.subject_title}</p>
                 <div className="flex items-center gap-3 mt-1.5">
-                    <span className="text-[10px] text-student-white-dim/60 font-mono">Units: {grade.units || 3}</span>
-                    <span className="text-[10px] text-student-white-dim/60 font-mono uppercase tracking-tighter">Semester: {grade.semester}</span>
+                    <span className="text-[10px] text-student-white-dim/60 font-mono">Units: {grade.credit_units || 3}</span>
+                    <span className="text-[10px] text-student-white-dim/60 font-mono uppercase tracking-tighter">Semester: {grade.semester_string}</span>
                 </div>
             </div>
         </div>
@@ -40,14 +45,18 @@ const GradeCard = ({ grade }) => {
 
 const GradesTab = ({ grades, gwa, gwaMeta, passed, failed, earned, academicStanding }) => {
     const sortedGrades = useMemo(() => {
-        return [...grades].sort((a, b) => (b.semester || '').localeCompare(a.semester || ''));
+        return [...grades].map(g => ({
+            ...g,
+            semester_string: g.semester_string || `Year ${g.target_year_level} Sem ${g.target_semester}`
+        })).sort((a, b) => b.semester_string.localeCompare(a.semester_string));
     }, [grades]);
 
     const bySem = useMemo(() => {
         const groups = {};
         sortedGrades.forEach(g => {
-            if (!groups[g.semester]) groups[g.semester] = [];
-            groups[g.semester].push(g);
+            const sem = g.semester_string;
+            if (!groups[sem]) groups[sem] = [];
+            groups[sem].push(g);
         });
         return groups;
     }, [sortedGrades]);
@@ -67,8 +76,31 @@ const GradesTab = ({ grades, gwa, gwaMeta, passed, failed, earned, academicStand
                 </div>
                 <div className="rounded-2xl p-5" style={{ background: 'var(--student-black-3)', border: '1px solid rgba(201, 168, 76, 0.1)' }}>
                     <p className="text-[10px] uppercase font-bold text-student-white-dim opacity-50 mb-1 tracking-widest font-mono">Academic Status</p>
-                    <p className="text-3xl font-black text-student-green" style={{ fontFamily: 'var(--student-font-display)' }}>{academicStanding?.standing || 'REGULAR'}</p>
-                    <p className="text-[10px] mt-1 text-student-white-dim uppercase font-mono">Current Evaluation</p>
+                    {(() => {
+                        const retentionStatus = academicStanding?.retention_status?.status;
+                        const isIrregular     = academicStanding?.is_irregular;
+
+                        let label = 'REGULAR';
+                        let color = 'var(--student-green)';
+                        let sub   = 'Current Evaluation';
+
+                        if (retentionStatus === 'DROPOUT_RISK') {
+                            label = 'DROPOUT RISK'; color = '#c0392b'; sub = 'Mandatory Counseling Required';
+                        } else if (retentionStatus === 'UNDER_RETENTION') {
+                            label = 'UNDER RETENTION'; color = '#f56c6c'; sub = 'Retention Exam Required';
+                        } else if (retentionStatus === 'AT_RISK') {
+                            label = 'AT RISK'; color = '#e6a23c'; sub = 'Monitor Closely';
+                        } else if (isIrregular) {
+                            label = 'IRREGULAR'; color = '#e6a23c'; sub = 'Has Back Subjects';
+                        }
+
+                        return (
+                            <>
+                                <p className="text-2xl font-black" style={{ fontFamily: 'var(--student-font-display)', color }}>{label}</p>
+                                <p className="text-[10px] mt-1 uppercase font-mono" style={{ color: 'var(--student-white-dim)' }}>{sub}</p>
+                            </>
+                        );
+                    })()}
                 </div>
             </div>
 

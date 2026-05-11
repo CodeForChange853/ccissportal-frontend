@@ -192,7 +192,7 @@ const RegistrationWizard = () => {
   const set = (k, v) => setRegData(prev => ({ ...prev, [k]: v }));
 
   const checkSize = (file) => {
-    if (file.size > 10 * 1024 * 1024) { setError('File too large — max 10 MB.'); return false; }
+    if (file.size > 5 * 1024 * 1024) { setError('File too large — max 5 MB.'); return false; }
     return true;
   };
 
@@ -403,7 +403,7 @@ const RegistrationWizard = () => {
                 <UploadZone
                   icon="🪪"
                   title="Upload School ID"
-                  sub="AI EXTRACTS YOUR NAME & COURSE · MAX 10 MB"
+                  sub="AI EXTRACTS YOUR NAME & COURSE · MAX 5 MB"
                   badge="NEURAL OCR READY"
                   accent={P.gold}
                   accept="image/*"
@@ -501,7 +501,7 @@ const RegistrationWizard = () => {
                 <UploadZone
                   icon="📄"
                   title="Upload Certificate of Registration"
-                  sub="AI EXTRACTS & AUTO-ENROLLS SUBJECTS · JPG / PNG / PDF · MAX 10 MB"
+                  sub="AI EXTRACTS & AUTO-ENROLLS SUBJECTS · JPG / PNG / PDF · MAX 5 MB"
                   badge="DOCUMENT AI READY"
                   accent={P.goldLight}
                   accept="image/*,application/pdf"

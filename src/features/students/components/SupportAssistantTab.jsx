@@ -226,7 +226,7 @@ const SupportAssistantTab = () => {
                             const status = t.ticket_status ?? t.status;
                             const description = t.issue_description ?? t.description;
                             const category = t.ai_predicted_category ?? t.category;
-                            
+
                             const sc = STATUS_CFG[status] ?? { label: status, color: '#94a3b8', bg: 'rgba(255,255,255,0.05)', border: 'rgba(255,255,255,0.1)' };
                             return (
                                 <div
