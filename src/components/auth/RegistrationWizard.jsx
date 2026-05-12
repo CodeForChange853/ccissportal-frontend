@@ -162,7 +162,7 @@ const RegistrationWizard = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
-  const { enrollmentOpen } = useSystemHealth();
+  const { enrollmentOpen, loading: systemLoading } = useSystemHealth(30000);
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -184,6 +184,9 @@ const RegistrationWizard = () => {
   const enteredPasskey = location.state?.enteredPasskey || '';
 
   useEffect(() => {
+    // Only redirect if we have finished checking the system status
+    if (systemLoading) return;
+
     if (!location.state?.claimedId) {
       navigate('/', { replace: true });
     } else if (!enrollmentOpen) {
@@ -192,7 +195,7 @@ const RegistrationWizard = () => {
     } else {
       setRegData(prev => ({ ...prev, studentId: location.state.claimedId }));
     }
-  }, [location, navigate, enrollmentOpen]);
+  }, [location, navigate, enrollmentOpen, systemLoading]);
 
   const showToast = (msg, type = 'success') => setToast({ message: msg, type });
   const set = (k, v) => setRegData(prev => ({ ...prev, [k]: v }));

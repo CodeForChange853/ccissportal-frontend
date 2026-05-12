@@ -61,6 +61,7 @@ export const useSystemHealth = (intervalMs = 60000) => {
     errorType,
     lastChecked,
     enrollmentOpen,
+    loading: status === 'CHECKING',
     refresh: checkHealth
   };
 };
