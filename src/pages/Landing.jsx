@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import client from '../api/client';
+import useSystemHealth from '../hooks/useSystemHealth';
 
 const P = {
   page: '#F2F2F2',
@@ -23,6 +24,9 @@ const P = {
   dangerBd: 'rgba(220,38,38,0.25)',
   font: "'Plus Jakarta Sans', system-ui, sans-serif",
   fontMono: "'JetBrains Mono', monospace",
+  success: '#16a34a',
+  successBg: 'rgba(22,163,74,0.07)',
+  successBd: 'rgba(22,163,74,0.25)',
 };
 
 const Icons = {
@@ -113,6 +117,8 @@ const Landing = () => {
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({ studentId: '', passkey: '' });
   const [error, setError] = useState('');
+  const { enrollmentOpen, status } = useSystemHealth();
+  const isOnline = status === 'ONLINE';
   const [isDesktop, setIsDesktop] = useState(
     typeof window !== 'undefined' ? window.innerWidth >= 1024 : false
   );
@@ -159,9 +165,116 @@ const Landing = () => {
                      radial-gradient(ellipse 50% 50% at 20% 80%, rgba(186,151,49,0.05) 0%, transparent 60%)`,
       }} />
 
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
+
       <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
 
         <div style={{ height: 3, background: `linear-gradient(to right, ${P.black}, ${P.gold}, ${P.goldLight}, ${P.gold}, ${P.black})`, flexShrink: 0 }} />
+
+        {/* Top Indicators Bar */}
+        <div style={{
+          position: 'absolute', 
+          top: isDesktop ? 20 : 10, 
+          left: isDesktop ? 'auto' : 10,
+          right: isDesktop ? 20 : 10, 
+          zIndex: 100,
+          display: 'flex',
+          justifyContent: isDesktop ? 'flex-end' : 'space-between',
+          alignItems: 'center',
+          gap: isDesktop ? '0.75rem' : '0.4rem',
+          width: isDesktop ? 'auto' : 'calc(100% - 20px)'
+        }}>
+          {/* Enrollment Status (Left on Mobile) */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: isDesktop ? 8 : 4,
+            padding: isDesktop ? '0.625rem 1.25rem' : '0.35rem 0.65rem',
+            background: enrollmentOpen ? P.successBg : P.dangerBg,
+            border: `1px solid ${enrollmentOpen ? P.successBd : P.dangerBd}`,
+            borderRadius: isDesktop ? '2rem' : '0.4rem',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+            pointerEvents: 'none',
+            position: isDesktop ? 'fixed' : 'static',
+            top: isDesktop ? 20 : 'auto',
+            left: isDesktop ? '50%' : 'auto',
+            transform: isDesktop ? 'translateX(-50%)' : 'none',
+          }}>
+            <span style={{
+              width: isDesktop ? 8 : 4, height: isDesktop ? 8 : 4, borderRadius: '50%',
+              background: enrollmentOpen ? P.success : P.danger,
+              boxShadow: `0 0 8px ${enrollmentOpen ? P.success : P.danger}`,
+            }} />
+            <span style={{
+              fontSize: isDesktop ? '0.72rem' : '0.52rem', fontWeight: 800,
+              color: enrollmentOpen ? P.success : P.danger,
+              letterSpacing: '0.05em', textTransform: 'uppercase',
+            }}>
+              {isDesktop ? `Enrollment is ${enrollmentOpen ? 'Active' : 'Closed'}` : (enrollmentOpen ? 'Open' : 'Closed')}
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', gap: isDesktop ? '0.75rem' : '0.4rem' }}>
+            <button
+              onClick={() => navigate('/status')}
+              style={{
+                padding: isDesktop ? '0.625rem 1.25rem' : '0.35rem 0.65rem',
+                background: isOnline ? P.successBg : (status === 'MAINTENANCE' ? P.warning + '22' : P.dangerBg),
+                color: isOnline ? P.success : (status === 'MAINTENANCE' ? P.warning : P.danger),
+                fontWeight: 700, fontSize: isDesktop ? '0.75rem' : '0.52rem',
+                fontFamily: P.font,
+                borderRadius: '0.4rem',
+                border: `1px solid ${isOnline ? P.successBd : (status === 'MAINTENANCE' ? P.warning + '44' : P.dangerBd)}`,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                letterSpacing: '0.05em',
+                textTransform: 'uppercase',
+                backdropFilter: 'blur(4px)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: isDesktop ? 8 : 4
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.boxShadow = `0 4px 12px ${isOnline ? P.success : P.danger}33`;
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              <span style={{ width: isDesktop ? 6 : 4, height: isDesktop ? 6 : 4, borderRadius: '50%', background: isOnline ? P.success : (status === 'MAINTENANCE' ? P.warning : P.danger), animation: 'pulse 2s infinite' }} />
+              {isDesktop ? 'System Status' : 'Status'}
+            </button>
+
+            <button
+              onClick={() => navigate('/rules')}
+              style={{
+                padding: isDesktop ? '0.625rem 1.25rem' : '0.35rem 0.65rem',
+                background: 'transparent',
+                color: P.gold,
+                fontWeight: 700, fontSize: isDesktop ? '0.75rem' : '0.52rem',
+                fontFamily: P.font,
+                borderRadius: '0.4rem',
+                border: `1px solid ${P.goldBorder}`,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                letterSpacing: '0.05em',
+                textTransform: 'uppercase',
+                backdropFilter: 'blur(4px)',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = P.goldDim;
+                e.currentTarget.style.boxShadow = `0 4px 12px ${P.goldGlow}`;
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              Rules
+            </button>
+          </div>
+        </div>
 
         <main style={{
           flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -221,37 +334,70 @@ const Landing = () => {
                 }}>
                   Semestral enrollment &amp; faculty load balancing — secure, intelligent, and built for the modern university.
                 </p>
+
+                {!enrollmentOpen && (
+                  <div style={{
+                    background: P.dangerBg,
+                    border: `1px solid ${P.dangerBd}`,
+                    borderRadius: '0.875rem',
+                    padding: isDesktop ? '1rem 1.25rem' : '0.75rem 1rem',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: isDesktop ? '0.875rem' : '0.6rem',
+                    maxWidth: '100%',
+                    width: isDesktop ? '32rem' : 'auto',
+                    marginTop: '1.5rem',
+                    animation: 'fadeIn 0.5s ease both',
+                  }}>
+                    <div style={{ fontSize: isDesktop ? '1.25rem' : '1rem' }}>📢</div>
+                    <div>
+                      <h3 style={{ fontSize: isDesktop ? '0.82rem' : '0.75rem', fontWeight: 700, color: P.danger, margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Enrollment Window Closed
+                      </h3>
+                      <p style={{ fontSize: isDesktop ? '0.75rem' : '0.68rem', color: P.textSec, margin: '4px 0 0', lineHeight: 1.5 }}>
+                        The academic portal is currently locked for new registrations. Please monitor official CCIS announcements for schedule updates.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* CTAs */}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', paddingTop: '0.25rem' }}>
                 <button
-                  onClick={() => setShowModal(true)}
+                  onClick={() => {
+                    if (!enrollmentOpen) return;
+                    setShowModal(true);
+                  }}
+                  disabled={!enrollmentOpen}
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: 8,
                     padding: '0.875rem 1.75rem',
-                    background: P.black,
-                    color: P.surface,
+                    background: enrollmentOpen ? P.black : P.depth,
+                    color: enrollmentOpen ? P.surface : P.textMuted,
                     fontWeight: 700, fontSize: '0.875rem',
                     fontFamily: P.font,
-                    borderRadius: '0.625rem', border: `1px solid ${P.black}`,
-                    cursor: 'pointer',
-                    boxShadow: `0 4px 24px ${P.goldGlow}, 0 1px 4px rgba(0,0,0,0.12)`,
+                    borderRadius: '0.625rem', 
+                    border: `1px solid ${enrollmentOpen ? P.black : P.border}`,
+                    cursor: enrollmentOpen ? 'pointer' : 'not-allowed',
+                    boxShadow: enrollmentOpen ? `0 4px 24px ${P.goldGlow}, 0 1px 4px rgba(0,0,0,0.12)` : 'none',
                     transition: 'all 0.2s ease',
                     letterSpacing: '0.01em',
                   }}
                   onMouseEnter={e => {
+                    if (!enrollmentOpen) return;
                     e.currentTarget.style.background = P.blackSoft;
                     e.currentTarget.style.boxShadow = `0 6px 32px rgba(186,151,49,0.32), 0 2px 8px rgba(0,0,0,0.16)`;
                     e.currentTarget.style.transform = 'translateY(-2px)';
                   }}
                   onMouseLeave={e => {
+                    if (!enrollmentOpen) return;
                     e.currentTarget.style.background = P.black;
                     e.currentTarget.style.boxShadow = `0 4px 24px ${P.goldGlow}, 0 1px 4px rgba(0,0,0,0.12)`;
                     e.currentTarget.style.transform = 'translateY(0)';
                   }}
                 >
-                  Begin Enrollment {Icons.arrow}
+                  {enrollmentOpen ? 'Begin Enrollment' : 'Enrollment Closed'} {Icons.arrow}
                 </button>
                 <button
                   onClick={() => navigate('/login')}
@@ -281,7 +427,6 @@ const Landing = () => {
                   Login
                 </button>
               </div>
-
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, paddingTop: 4 }}>
                 {['AI-Secured', 'Zero Data Retention', 'Real-Time'].map((tag, i) => (
@@ -415,6 +560,13 @@ const Landing = () => {
         }}>
           <span>CCIS — NWSSU System</span>
           <span style={{ margin: '0 10px', opacity: 0.4 }}>|</span>
+          <span 
+            onClick={() => navigate('/status')}
+            style={{ cursor: 'pointer', textDecoration: 'underline', color: P.gold }}
+          >
+            System Status
+          </span>
+          <span style={{ margin: '0 10px', opacity: 0.4 }}>|</span>
           <span>Secured by AI Vision · © 2025 · Garcia, Adrian</span>
         </footer>
       </div>
@@ -431,7 +583,6 @@ const Landing = () => {
             animation: 'fadeIn 0.2s ease',
           }}
         >
-          <style>{`@keyframes fadeIn{from{opacity:0}to{opacity:1}}@keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}`}</style>
           <div style={{
             width: '100%', maxWidth: '26rem',
             background: P.surface,
@@ -511,6 +662,18 @@ const Landing = () => {
                     {Icons.warning} {error}
                   </div>
                 )}
+
+                <div style={{ marginTop: '0.25rem', marginBottom: '0.5rem' }}>
+                  <p style={{ fontSize: '0.72rem', color: P.textMuted, textAlign: 'center' }}>
+                    By continuing, you acknowledge that you have read and agree to the system's{' '}
+                    <span
+                      onClick={() => navigate('/rules')}
+                      style={{ color: P.gold, cursor: 'pointer', fontWeight: 600, textDecoration: 'underline' }}
+                    >
+                      Rules & Regulations
+                    </span>.
+                  </p>
+                </div>
 
                 <button
                   type="submit"

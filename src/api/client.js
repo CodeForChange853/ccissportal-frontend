@@ -3,10 +3,15 @@ import axios from 'axios';
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
   headers: { 'Content-Type': 'application/json' },
+  timeout: 10000, // Instructional Guardrail #1: 10s Timeout
 });
 
 apiClient.interceptors.request.use(
   (config) => {
+    // Check network status before sending
+    if (!window.navigator.onLine) {
+      return Promise.reject({ code: 'NETWORK_OFFLINE' });
+    }
     const token = localStorage.getItem('token');
     if (token) config.headers['Authorization'] = `Bearer ${token}`;
     return config;
@@ -17,17 +22,40 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Instructional Guardrail #2: Error Categorization
+    if (error.code === 'NETWORK_OFFLINE' || !window.navigator.onLine) {
+       return Promise.reject('NETWORK_OFFLINE');
+    }
 
+    if (error.code === 'ECONNABORTED') {
+      return Promise.reject('BACKEND_UNREACHABLE');
+    }
+
+    const status = error.response?.status;
     const maintenanceInfo = error.response?.data?.detail?.maintenance ? error.response.data.detail : error.response?.data;
+    const errorDetail = error.response?.data?.detail;
     
-    if (error.response?.status === 503 && maintenanceInfo?.maintenance) {
-      sessionStorage.setItem('maintenance_reason', maintenanceInfo.reason || '');
-      sessionStorage.setItem('maintenance_message', maintenanceInfo.message || '');
-      window.location.href = '/maintenance';
+    // Handle Banned Account
+    if (status === 403 && errorDetail?.code === 'ACCOUNT_BANNED') {
+      localStorage.removeItem('token');
+      window.location.href = '/banned';
       return Promise.reject(error);
     }
 
-    if (error.response?.status === 401) {
+    // Handle 502, 503, 504 (Server Maintenance or Restarting)
+    if ([502, 503, 504].includes(status)) {
+      if (status === 503 && maintenanceInfo?.maintenance) {
+        const isStatusPage = window.location.pathname === '/status';
+        if (!isStatusPage) {
+          sessionStorage.setItem('maintenance_reason', maintenanceInfo.reason || '');
+          sessionStorage.setItem('maintenance_message', maintenanceInfo.message || '');
+          window.location.href = '/maintenance';
+        }
+      }
+      return Promise.reject('SERVER_MAINTENANCE_OR_RESTARTING');
+    }
+
+    if (status === 401) {
       const isLoginEndpoint = error.config?.url?.includes('/authentication/login');
       if (!isLoginEndpoint) {
         localStorage.removeItem('token');
@@ -88,6 +116,7 @@ const client = {
   resolveTicket: (id) => apiClient.patch(`/support/${id}/resolve`),
 
   getFacultyLoad: () => apiClient.get('/faculty/load'),
+  getAnnouncements: () => axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/announcements`),
 };
 
 export default client;

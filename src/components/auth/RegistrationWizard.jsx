@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
+import useSystemHealth from '../../hooks/useSystemHealth';
 import ScannerOverlay from '../visuals/ScannerOverlay';
 import Toast from '../ui/Toast';
 
@@ -161,6 +162,7 @@ const RegistrationWizard = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
+  const { enrollmentOpen } = useSystemHealth();
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -170,6 +172,7 @@ const RegistrationWizard = () => {
   const [toast, setToast] = useState(null);
   const [previewImg, setPreview] = useState(null);
   const [scanType, setScanType] = useState('ID');
+  const [failCount, setFailCount] = useState(0);
 
   const [regData, setRegData] = useState({
     studentId: '', fullName: '', course: 'BSCS',
@@ -183,10 +186,13 @@ const RegistrationWizard = () => {
   useEffect(() => {
     if (!location.state?.claimedId) {
       navigate('/', { replace: true });
+    } else if (!enrollmentOpen) {
+      // If they somehow got here while enrollment closed, send them back
+      navigate('/', { replace: true });
     } else {
       setRegData(prev => ({ ...prev, studentId: location.state.claimedId }));
     }
-  }, [location, navigate]);
+  }, [location, navigate, enrollmentOpen]);
 
   const showToast = (msg, type = 'success') => setToast({ message: msg, type });
   const set = (k, v) => setRegData(prev => ({ ...prev, [k]: v }));
@@ -209,6 +215,14 @@ const RegistrationWizard = () => {
   };
 
   const handleIDScan = async (file) => {
+    if (!enrollmentOpen) {
+      setError('Enrollment is currently closed. Registration is suspended.');
+      return;
+    }
+    if (failCount >= 3) {
+      setError('Too many failed attempts. Please wait a few minutes before trying again.');
+      return;
+    }
     if (!file || !checkSize(file)) return;
     setScanType('ID');
     setPreview(URL.createObjectURL(file));
@@ -217,6 +231,7 @@ const RegistrationWizard = () => {
       const { data: scanInit } = await client.scanDocument(file, 'ID');
       setStatus('VERIFYING IDENTITY…');
       const result = await pollScan(scanInit.secure_scan_token);
+      setFailCount(0); // Reset on success
       if (result?.extracted_ai_data) {
         let parsed = {};
         try { parsed = JSON.parse(result.extracted_ai_data); } catch { /* ignore */ }
@@ -244,6 +259,7 @@ const RegistrationWizard = () => {
       }
       setStep(2);
     } catch (err) {
+      setFailCount(prev => prev + 1);
       setError(`Scan unavailable: ${err.message}. Fill in manually.`);
       setStep(2);
     } finally {
@@ -252,6 +268,14 @@ const RegistrationWizard = () => {
   };
 
   const handleCORScan = async (file) => {
+    if (!enrollmentOpen) {
+      setError('Enrollment is currently closed.');
+      return;
+    }
+    if (failCount >= 3) {
+      setError('Too many attempts. Please try again later.');
+      return;
+    }
     if (!file || !checkSize(file)) return;
     setScanType('COR');
     setPreview(URL.createObjectURL(file));
@@ -260,6 +284,7 @@ const RegistrationWizard = () => {
       const { data: scanInit } = await client.scanDocument(file, 'COR');
       setStatus('EXTRACTING ENROLLMENT DATA…');
       const result = await pollScan(scanInit.secure_scan_token);
+      setFailCount(0); // Reset on success
       if (result?.extracted_ai_data) {
         let parsed = {};
         try { parsed = JSON.parse(result.extracted_ai_data); } catch { /* ignore */ }
@@ -269,6 +294,7 @@ const RegistrationWizard = () => {
       }
       setStep(4);
     } catch (err) {
+      setFailCount(prev => prev + 1);
       setError(`COR scan failed: ${err.message}. Proceeding manually.`);
       setStep(4);
     } finally {
@@ -431,6 +457,7 @@ const RegistrationWizard = () => {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <Field label="Full Name" error={fieldErrs.fullName}>
                   <input type="text" value={regData.fullName} placeholder="Juan dela Cruz"
+                    maxLength={100}
                     onChange={e => set('fullName', e.target.value)}
                     style={inputFieldStyle(fieldErrs.fullName)}
                     onFocus={inputFocus} onBlur={inputBlur} />
@@ -447,6 +474,7 @@ const RegistrationWizard = () => {
               </div>
               <Field label="Email Address" error={fieldErrs.email}>
                 <input type="email" value={regData.email} placeholder="student@university.edu.ph"
+                  maxLength={150}
                   onChange={e => set('email', e.target.value)}
                   style={inputFieldStyle(fieldErrs.email)}
                   onFocus={inputFocus} onBlur={inputBlur} />
@@ -454,12 +482,14 @@ const RegistrationWizard = () => {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <Field label="Create Password" hint="(min. 8 chars)" error={fieldErrs.password}>
                   <input type="password" value={regData.password}
+                    maxLength={100}
                     onChange={e => set('password', e.target.value)}
                     style={inputFieldStyle(fieldErrs.password)}
                     onFocus={inputFocus} onBlur={inputBlur} />
                 </Field>
                 <Field label="Confirm Password" error={fieldErrs.confirmPassword}>
                   <input type="password" value={regData.confirmPassword}
+                    maxLength={100}
                     onChange={e => set('confirmPassword', e.target.value)}
                     style={inputFieldStyle(fieldErrs.confirmPassword)}
                     onFocus={inputFocus} onBlur={inputBlur} />

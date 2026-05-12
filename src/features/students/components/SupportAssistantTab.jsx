@@ -38,6 +38,7 @@ const SupportAssistantTab = () => {
     const [error, setError] = useState(null);
     const [tickets, setTickets] = useState([]);
     const [fetching, setFetching] = useState(true);
+    const [warningModal, setWarningModal] = useState(null); // { violation_count, message }
 
     const fetchTickets = async () => {
         setFetching(true);
@@ -65,7 +66,15 @@ const SupportAssistantTab = () => {
             setDescription('');
             fetchTickets();
         } catch (err) {
-            setError(err.response?.data?.detail || 'Failed to submit. Please try again later.');
+            const detail = err.response?.data?.detail;
+            if (detail?.code === 'EXPLICIT_CONTENT_WARNING') {
+                setWarningModal({
+                    violation_count: detail.violation_count,
+                    message: detail.message
+                });
+            } else {
+                setError(detail || 'Failed to submit. Please try again later.');
+            }
         } finally {
             setSubmitting(false);
         }
@@ -289,6 +298,58 @@ const SupportAssistantTab = () => {
                     </div>
                 )}
             </div>
+
+            {/* Warning Modal */}
+            {warningModal && (
+                <div style={{
+                    position: 'fixed', inset: 0, zIndex: 1000,
+                    background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
+                }}>
+                    <div style={{
+                        maxWidth: 480, width: '100%', background: 'var(--student-black-2)',
+                        borderRadius: 24, border: '1px solid rgba(220,38,38,0.3)',
+                        padding: 40, textAlign: 'center', boxShadow: '0 32px 64px rgba(0,0,0,0.5)'
+                    }}>
+                        <div style={{ fontSize: 56, marginBottom: 20 }}>⚠️</div>
+                        <h3 style={{ 
+                            fontSize: 22, fontWeight: 900, color: '#f56c6c', 
+                            fontFamily: 'var(--student-font-display)', marginBottom: 16 
+                        }}>
+                            Academic Integrity Warning
+                        </h3>
+                        <p style={{ 
+                            fontSize: 14, color: 'var(--student-white)', 
+                            lineHeight: 1.6, marginBottom: 24, fontWeight: 500 
+                        }}>
+                            {warningModal.message}
+                        </p>
+                        <div style={{ 
+                            background: 'rgba(220,38,38,0.1)', borderRadius: 12, 
+                            padding: 16, marginBottom: 32, border: '1px solid rgba(220,38,38,0.2)' 
+                        }}>
+                            <p style={{ 
+                                fontSize: 11, fontWeight: 900, color: '#f56c6c', 
+                                textTransform: 'uppercase', letterSpacing: 2, margin: '0 0 4px' 
+                            }}>Violation Count</p>
+                            <p style={{ 
+                                fontSize: 24, fontWeight: 900, color: 'var(--student-white)', margin: 0 
+                            }}>
+                                {warningModal.violation_count} / 3
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => setWarningModal(null)}
+                            style={{
+                                width: '100%', padding: '14px 0', borderRadius: 12,
+                                background: 'var(--student-gold)', color: 'var(--student-black)',
+                                fontSize: 13, fontWeight: 900, textTransform: 'uppercase',
+                                letterSpacing: 2, cursor: 'pointer', border: 'none'
+                            }}
+                        >I understand and will follow the rules</button>
+                    </div>
+                </div>
+            )}
 
             <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>

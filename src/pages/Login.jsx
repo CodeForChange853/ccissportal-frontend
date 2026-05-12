@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useSystemHealth } from '../hooks/useSystemHealth';
 
 const P = {
   page: '#F2F2F2',
@@ -43,6 +44,7 @@ const AlertIcon = () => (
 const Login = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const { isSystemUp, status, errorType } = useSystemHealth();
 
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
@@ -151,6 +153,18 @@ const Login = () => {
             </div>
           )}
 
+          {!isSystemUp && status !== 'CHECKING' && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              background: 'rgba(186,151,49,0.08)', border: `1px solid ${P.goldBorder}`,
+              color: P.gold, padding: '0.625rem 0.875rem',
+              borderRadius: '0.5rem', fontSize: '0.82rem', marginBottom: '1rem',
+            }}>
+              <AlertIcon /> 
+              {status === 'MAINTENANCE' ? 'Server is updating... Please wait.' : 'Network connection lost.'}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit}>
 
             {/* Email */}
@@ -165,6 +179,7 @@ const Login = () => {
                 type="text"
                 required
                 placeholder="you@nwssu.edu.ph"
+                maxLength={150}
                 value={formData.email}
                 onChange={e => setFormData(f => ({ ...f, email: e.target.value }))}
                 style={inputStyle}
@@ -186,6 +201,7 @@ const Login = () => {
                   type={showPw ? 'text' : 'password'}
                   required
                   placeholder="••••••••"
+                  maxLength={100}
                   value={formData.password}
                   onChange={e => setFormData(f => ({ ...f, password: e.target.value }))}
                   style={{ ...inputStyle, paddingRight: '4rem' }}
@@ -213,33 +229,33 @@ const Login = () => {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !isSystemUp}
               style={{
                 width: '100%', padding: '0.875rem',
-                background: loading ? P.depth : P.black,
-                color: loading ? P.textMuted : P.surface,
+                background: (loading || !isSystemUp) ? P.depth : P.black,
+                color: (loading || !isSystemUp) ? P.textMuted : P.surface,
                 fontWeight: 700, fontSize: '0.875rem',
                 fontFamily: P.font, borderRadius: '0.625rem',
-                border: `1px solid ${loading ? P.border : P.black}`,
-                cursor: loading ? 'not-allowed' : 'pointer',
-                boxShadow: loading ? 'none' : `0 4px 20px ${P.goldGlow}`,
+                border: `1px solid ${(loading || !isSystemUp) ? P.border : P.black}`,
+                cursor: (loading || !isSystemUp) ? 'not-allowed' : 'pointer',
+                boxShadow: (loading || !isSystemUp) ? 'none' : `0 4px 20px ${P.goldGlow}`,
                 transition: 'all 0.2s ease',
                 letterSpacing: '0.02em',
               }}
               onMouseEnter={e => {
-                if (!loading) {
+                if (!loading && isSystemUp) {
                   e.currentTarget.style.background = P.blackSoft;
                   e.currentTarget.style.boxShadow = `0 6px 28px rgba(186,151,49,0.30)`;
                   e.currentTarget.style.transform = 'translateY(-1px)';
                 }
               }}
               onMouseLeave={e => {
-                e.currentTarget.style.background = loading ? P.depth : P.black;
-                e.currentTarget.style.boxShadow = loading ? 'none' : `0 4px 20px ${P.goldGlow}`;
+                e.currentTarget.style.background = (loading || !isSystemUp) ? P.depth : P.black;
+                e.currentTarget.style.boxShadow = (loading || !isSystemUp) ? 'none' : `0 4px 20px ${P.goldGlow}`;
                 e.currentTarget.style.transform = 'translateY(0)';
               }}
             >
-              {loading ? 'Authenticating…' : 'Sign In'}
+              {loading ? 'Authenticating…' : !isSystemUp ? 'System Offline' : 'Sign In'}
             </button>
           </form>
 

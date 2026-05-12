@@ -8,6 +8,9 @@ import RegistrationWizard from './components/auth/RegistrationWizard';
 // Public pages
 import Landing from './pages/Landing';
 import Login from './pages/Login';
+import Banned from './pages/Banned';
+import Rules from './pages/Rules';
+import Status from './pages/Status';
 import MaintenanceScreen from './components/MaintenanceScreen';
 
 // Admin layout + pages
@@ -53,8 +56,8 @@ const SystemGuard = ({ children }) => {
   const location = window.location.pathname;
 
   React.useEffect(() => {
-    // Skip check if already on maintenance page or public auth pages
-    if (['/maintenance', '/', '/login', '/register'].includes(location)) {
+    // Skip check if already on maintenance page or public informative/auth pages
+    if (['/maintenance', '/', '/login', '/register', '/status', '/rules', '/banned'].includes(location)) {
       setChecking(false);
       return;
     }
@@ -101,6 +104,9 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<RegistrationWizard />} />
             <Route path="/maintenance" element={<MaintenanceScreen />} />
+            <Route path="/banned" element={<Banned />} />
+            <Route path="/rules" element={<Rules />} />
+            <Route path="/status" element={<Status />} />
 
             {/* ── Authenticated portal routes  */}
             <Route path="/portal" element={<PortalGuard />}>

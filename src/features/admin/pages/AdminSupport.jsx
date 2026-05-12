@@ -132,10 +132,18 @@ const AdminSupport = () => {
     const [rerouteModal, setRerouteModal] = useState(null);
     const [rerouting, setRerouting] = useState(false);
     const [isRetraining, setIsRetraining] = useState(false);
+    const [telemetry, setTelemetry] = useState(null);
 
     const load = async () => {
         setLoading(true);
-        try { setTickets((await adminApi.fetchAllTickets()) ?? []); }
+        try { 
+            const [ticketRes, telRes] = await Promise.all([
+                adminApi.fetchAllTickets(),
+                adminApi.fetchTelemetry()
+            ]);
+            setTickets(ticketRes ?? []); 
+            setTelemetry(telRes);
+        }
         catch { toast.error('Failed to load tickets.'); }
         finally { setLoading(false); }
     };
@@ -230,12 +238,21 @@ const AdminSupport = () => {
             />
 
             {/* Global KPI strip */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12 }}>
                 {[
                     { label: 'TOTAL TICKETS', value: total, color: 'var(--text-terminal)' },
                     { label: 'OPEN', value: allOpen, color: allOpen > 0 ? 'var(--color-danger)' : 'var(--color-success)' },
-                    { label: 'PENDING', value: allPend, color: allPend > 0 ? 'var(--color-warning)' : 'var(--color-success)' },
                     { label: 'RESOLVED', value: allRes, color: 'var(--color-success)' },
+                    { 
+                        label: 'AI TRIAGE ACCURACY', 
+                        value: `${telemetry?.accuracy_percentage ?? 0}%`, 
+                        color: 'var(--accent-light)' 
+                    },
+                    { 
+                        label: 'CORRECT ROUTING RATIO', 
+                        value: `${Math.round((telemetry?.accuracy_percentage ?? 0) / 10)} OUT OF 10`, 
+                        color: 'var(--neon-cyan)' 
+                    },
                 ].map(({ label, value, color }) => (
                     <div key={label} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: 8, padding: '14px 16px' }}>
                         <DataReadout label={label} value={value} color={color} size="sm" />
