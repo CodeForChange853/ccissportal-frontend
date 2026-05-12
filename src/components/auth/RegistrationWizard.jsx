@@ -178,7 +178,7 @@ const RegistrationWizard = () => {
     studentId: '', fullName: '', course: 'BSCS',
     email: '', password: '', confirmPassword: '',
     idFile: null, corFile: null,
-    scannedSubjects: [], verificationToken: '',
+    scannedSubjects: [], idToken: '', corToken: '',
   });
 
   const enteredPasskey = location.state?.enteredPasskey || '';
@@ -256,7 +256,7 @@ const RegistrationWizard = () => {
           ...prev, idFile: file,
           fullName: ex.full_name || prev.fullName,
           course: ex.course || prev.course,
-          verificationToken: scanInit.secure_scan_token,
+          idToken: scanInit.secure_scan_token,
         }));
         showToast('Identity verified and matched!');
       }
@@ -292,7 +292,7 @@ const RegistrationWizard = () => {
         let parsed = {};
         try { parsed = JSON.parse(result.extracted_ai_data); } catch { /* ignore */ }
         const subjects = parsed.extracted_data?.subjects ?? [];
-        setRegData(prev => ({ ...prev, corFile: file, scannedSubjects: subjects, verificationToken: scanInit.secure_scan_token }));
+        setRegData(prev => ({ ...prev, corFile: file, scannedSubjects: subjects, corToken: scanInit.secure_scan_token }));
         showToast(`${subjects.length} subjects extracted from COR!`);
       }
       setStep(4);
@@ -325,7 +325,8 @@ const RegistrationWizard = () => {
         plain_text_password: regData.password,
         passkey_code: enteredPasskey,
         account_role: 'STUDENT',
-        document_verification_token: regData.verificationToken || null,
+        id_verification_token: regData.idToken || null,
+        cor_verification_token: regData.corToken || null,
         first_name: nameParts[0] || 'Student',
         last_name: nameParts.slice(1).join(' ') || '',
         student_number: regData.studentId || null,
@@ -450,13 +451,15 @@ const RegistrationWizard = () => {
                 onClick={() => setStep(2)}
                 style={{
                   marginTop: '1.25rem', background: 'transparent', border: 'none',
-                  fontSize: '0.75rem', color: P.textMuted, cursor: 'pointer',
-                  fontFamily: P.fontMono, transition: 'color 0.15s',
+                  fontSize: '0.7rem', color: P.textMuted, cursor: 'pointer',
+                  fontFamily: P.font, transition: 'color 0.15s',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%'
                 }}
-                onMouseEnter={e => { e.currentTarget.style.color = P.gold; }}
+                onMouseEnter={e => { e.currentTarget.style.color = P.danger; }}
                 onMouseLeave={e => { e.currentTarget.style.color = P.textMuted; }}
               >
-                Skip — enter details manually →
+                <span>⚠</span>
+                Skip AI Identity Verification — Requires Manual Registrar Approval
               </button>
             </div>
           )}
@@ -552,13 +555,15 @@ const RegistrationWizard = () => {
                 onClick={() => setStep(4)}
                 style={{
                   marginTop: '1.25rem', background: 'transparent', border: 'none',
-                  fontSize: '0.75rem', color: P.textMuted, cursor: 'pointer',
-                  fontFamily: P.fontMono, transition: 'color 0.15s',
+                  fontSize: '0.7rem', color: P.textMuted, cursor: 'pointer',
+                  fontFamily: P.font, transition: 'color 0.15s',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%'
                 }}
-                onMouseEnter={e => { e.currentTarget.style.color = P.gold; }}
+                onMouseEnter={e => { e.currentTarget.style.color = P.danger; }}
                 onMouseLeave={e => { e.currentTarget.style.color = P.textMuted; }}
               >
-                Skip — first-year student or enroll later →
+                <span>⚠</span>
+                Skip COR Verification — Auto-Enrollment will be disabled
               </button>
             </div>
           )}

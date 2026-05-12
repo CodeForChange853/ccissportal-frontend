@@ -132,7 +132,11 @@ const Landing = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    if (!formData.studentId.trim()) { setError('Please enter a valid Student ID.'); return; }
+    const idRegex = /^\d{2}-\d{5,6}$/; // Matches 23-10045 or 23-100045
+    if (!idRegex.test(formData.studentId.trim())) { 
+      setError('Invalid format. Please use XX-XXXXX (e.g., 23-10045).'); 
+      return; 
+    }
     if (!formData.passkey.trim()) { setError('Please enter the system passkey.'); return; }
     
     try {
