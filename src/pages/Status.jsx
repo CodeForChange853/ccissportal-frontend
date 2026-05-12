@@ -273,7 +273,7 @@ const Status = () => {
   }));
 
   const rawIncidents = announcements.length > 0 ? announcements : MOCK_INCIDENTS;
-  
+
   // Inject live incident if system is not OK
   const activeIncident = !globalOk ? [{
     title: globalLabel,
