@@ -47,6 +47,24 @@ export function AuthProvider({ children }) {
     setLoading(false);
   }, []);
 
+  const setSession = (loginData) => {
+    const { access_token } = loginData;
+    const decoded = parseJwt(access_token);
+    if (!decoded) return false;
+
+    const userData = {
+      username: decoded.sub,
+      role: loginData.account_role || decoded.role || 'STUDENT',
+      id: decoded.id,
+      authenticated: true,
+    };
+
+    localStorage.setItem('token', access_token);
+    localStorage.setItem('user_data', JSON.stringify(loginData));
+    setUser(userData);
+    return true;
+  };
+
   const login = async (username, password) => {
     try {
       const response = await api.post('/authentication/login', {
@@ -54,23 +72,10 @@ export function AuthProvider({ children }) {
         plain_text_password: password
       });
 
-      const { access_token } = response.data;
-      const decoded = parseJwt(access_token);
-      if (!decoded) throw new Error('Received malformed token from server.');
-
-      const userData = {
-        username: decoded.sub,
-        role: response.data.account_role || decoded.role || 'STUDENT',
-        id: decoded.id,
-        authenticated: true,
-      };
-
-      localStorage.setItem('token', access_token);
-      localStorage.setItem('user_data', JSON.stringify(response.data));
-      setUser(userData);
-
-      return { success: true, role: userData.role };
-
+      if (setSession(response.data)) {
+        return { success: true, role: response.data.account_role || 'STUDENT' };
+      }
+      throw new Error('Failed to initialize session.');
     } catch (error) {
       let errorMessage = 'Login failed. Please check your credentials.';
       const detail = error.response?.data?.detail;
@@ -96,7 +101,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, logout, setSession, loading }}>
       {!loading && children}
     </AuthContext.Provider>
   );

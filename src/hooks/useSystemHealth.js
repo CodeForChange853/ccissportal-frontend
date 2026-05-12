@@ -8,6 +8,9 @@ export const useSystemHealth = (intervalMs = 60000) => {
   const [lastChecked, setLastChecked] = useState(new Date());
   const [enrollmentOpen, setEnrollmentOpen] = useState(false);
 
+  const [consensusCount, setConsensusCount] = useState(0);
+  const [lastResponse, setLastResponse] = useState(null);
+
   const checkHealth = useCallback(async () => {
     try {
       if (!window.navigator.onLine) {
@@ -19,35 +22,48 @@ export const useSystemHealth = (intervalMs = 60000) => {
       const response = await client.checkSystemStatus();
 
       if (response.status === 200) {
-        setStatus('ONLINE');
-        setErrorType(null);
-        setEnrollmentOpen(response.data.enrollment_open);
+        const newData = response.data;
+        
+        // Consensus Logic: Only change status if we get the same result consistently
+        // or if it's the very first successful check.
+        if (lastResponse === null) {
+          setStatus('ONLINE');
+          setErrorType(null);
+          setEnrollmentOpen(newData.enrollment_open);
+          setLastResponse(newData);
+          setConsensusCount(1);
+        } else if (newData.enrollment_open === lastResponse.enrollment_open && 
+                   newData.maintenance_mode === lastResponse.maintenance_mode) {
+          // Status is stable
+          setStatus('ONLINE');
+          setErrorType(null);
+          setEnrollmentOpen(newData.enrollment_open);
+        } else {
+          // Detected a change! Wait for consensus (3 polls) before flipping UI
+          if (consensusCount >= 2) {
+            setEnrollmentOpen(newData.enrollment_open);
+            setLastResponse(newData);
+            setConsensusCount(0);
+          } else {
+            setConsensusCount(prev => prev + 1);
+          }
+        }
       }
     } catch (error) {
+      // For errors, we keep the last known good state of enrollmentOpen 
+      // but update the system status to alert the user.
       const respStatus = error.response?.status;
       const isMaintenance = respStatus === 503 || error === 'SERVER_MAINTENANCE_OR_RESTARTING';
-      const isRestarting = [502, 504].includes(respStatus);
-
+      
       if (isMaintenance) {
         setStatus('MAINTENANCE');
-        setErrorType('SERVER_MAINTENANCE');
-      } else if (isRestarting) {
-        setStatus('MAINTENANCE');
-        setErrorType('SERVER_RESTARTING');
-      } else if (error === 'BACKEND_UNREACHABLE' || respStatus === 500) {
-        setStatus('OFFLINE');
-        setErrorType('BACKEND_UNREACHABLE');
-      } else if (error === 'NETWORK_OFFLINE') {
-        setStatus('OFFLINE');
-        setErrorType('NETWORK_OFFLINE');
       } else {
         setStatus('OFFLINE');
-        setErrorType('UNKNOWN_ERROR');
       }
     } finally {
       setLastChecked(new Date());
     }
-  }, []);
+  }, [lastResponse, consensusCount]);
 
   useEffect(() => {
     checkHealth();

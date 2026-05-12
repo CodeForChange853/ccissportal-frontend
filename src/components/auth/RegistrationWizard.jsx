@@ -161,7 +161,7 @@ const UploadZone = ({ icon, title, sub, badge, accent = P.gold, accept, onChange
 const RegistrationWizard = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth();
+  const { setSession } = useAuth();
   const { enrollmentOpen, loading: systemLoading } = useSystemHealth(30000);
 
   const [step, setStep] = useState(1);
@@ -320,7 +320,7 @@ const RegistrationWizard = () => {
     setLoading(true); setStatus('CREATING STUDENT RECORD…'); setError('');
     try {
       const nameParts = regData.fullName.trim().split(' ');
-      await client.submitRegistration({
+      const response = await client.submitRegistration({
         email_address: regData.email,
         plain_text_password: regData.password,
         passkey_code: enteredPasskey,
@@ -331,10 +331,17 @@ const RegistrationWizard = () => {
         student_number: regData.studentId || null,
         course: regData.course || 'BSCS',
       });
-      setStatus('AUTHENTICATING…');
-      const loginResult = await login(regData.email, regData.password);
-      showToast('Welcome to the system!');
-      setTimeout(() => navigate(loginResult.success ? '/portal/student' : '/login', { replace: true }), 1200);
+
+      // Industry Standard: Use the token returned by the registration endpoint for instant login
+      const success = setSession(response.data);
+      
+      if (success) {
+        showToast('Account created! Welcome aboard.');
+        setTimeout(() => navigate('/portal/student', { replace: true }), 1500);
+      } else {
+        showToast('Account created! Please log in.', 'info');
+        setTimeout(() => navigate('/login', { replace: true }), 1500);
+      }
     } catch (err) {
       setError(`Registration failed: ${err.response?.data?.detail ?? err.message}`);
       setLoading(false);
