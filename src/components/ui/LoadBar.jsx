@@ -1,5 +1,5 @@
 // frontend/src/components/ui/LoadBar.jsx
-const LoadBar = ({ current = 0, max = 1, showLabel = true }) => {
+const LoadBar = ({ current = 0, max = 1, showLabel = true, label = 'Progress' }) => {
     const pct = max > 0 ? Math.round((current / max) * 100) : 0;
     const color =
         pct >= 100 ? 'var(--color-danger)'
@@ -8,11 +8,18 @@ const LoadBar = ({ current = 0, max = 1, showLabel = true }) => {
 
     return (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{
-                flex: 1, height: 3,
-                background: 'var(--bg-depth)',
-                borderRadius: 2, overflow: 'hidden',
-            }}>
+            <div
+                role="progressbar"
+                aria-valuenow={pct}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={`${label}: ${current} of ${max}`}
+                style={{
+                    flex: 1, height: 3,
+                    background: 'var(--bg-depth)',
+                    borderRadius: 2, overflow: 'hidden',
+                }}
+            >
                 <div style={{
                     height: '100%',
                     width: `${Math.min(pct, 100)}%`,
@@ -22,7 +29,7 @@ const LoadBar = ({ current = 0, max = 1, showLabel = true }) => {
                 }} />
             </div>
             {showLabel && (
-                <span style={{
+                <span aria-hidden="true" style={{
                     fontFamily: 'var(--font-terminal)',
                     fontSize: '0.62rem',
                     color,

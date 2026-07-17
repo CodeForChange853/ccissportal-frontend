@@ -55,4 +55,16 @@ export const facultyApi = {
         const res = await apiClient.put(`/faculty/consultations/requests/${requestId}/status`, { status });
         return res.data;
     },
+
+    fetchINCQueue: async () => {
+        const res = await apiClient.get('/secretariat/completion/faculty-queue');
+        return res.data;
+    },
+
+    submitINCGrade: async (requestId, grade, note = null) => {
+        const payload = { new_state: 'AWAITING_ADMIN_POSTING', faculty_grade: grade };
+        if (note) payload.note = note;
+        const res = await apiClient.patch(`/secretariat/completion/${requestId}/advance`, payload);
+        return res.data;
+    },
 };

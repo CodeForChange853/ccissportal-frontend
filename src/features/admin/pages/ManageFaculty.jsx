@@ -1,6 +1,6 @@
 // frontend/src/features/admin/pages/ManageFaculty.jsx
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-quartz.css';
@@ -14,6 +14,139 @@ import StatusBadge from '../../../components/ui/StatusBadge';
 import DataReadout from '../../../components/ui/DataReadout';
 import LoadBar from '../../../components/ui/LoadBar';
 import { UsersIcon, FacultyIcon, ShieldIcon, LoadIcon } from '../../../components/icons';
+
+// ── SE-02: Score bar component ─────────────────────────────────────────────
+const ScoreBar = ({ value, color = 'var(--neon-cyan)', label }) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.52rem', color: 'var(--text-muted)', width: 90, flexShrink: 0, letterSpacing: '0.08em' }}>
+            {label}
+        </span>
+        <div style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2 }}>
+            <div style={{ width: `${value}%`, height: '100%', background: color, borderRadius: 2, transition: 'width 0.5s ease' }} />
+        </div>
+        <span style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.52rem', color, width: 28, textAlign: 'right' }}>
+            {value}
+        </span>
+    </div>
+);
+
+// ── SE-02: Candidate card ──────────────────────────────────────────────────
+const CandidateCard = ({ candidate, isSelected, onSelect }) => {
+    const scoreColor = candidate.suitability_score >= 70
+        ? 'var(--neon-green)'
+        : candidate.suitability_score >= 45
+            ? 'var(--neon-orange)'
+            : 'var(--neon-red)';
+
+    return (
+        <div
+            onClick={onSelect}
+            style={{
+                padding: '12px 14px',
+                borderRadius: 10,
+                border: `1px solid ${isSelected ? 'var(--neon-cyan)' : candidate.is_top_pick ? 'rgba(0,255,180,0.3)' : 'var(--border-subtle)'}`,
+                background: isSelected
+                    ? 'rgba(0,255,255,0.06)'
+                    : candidate.is_top_pick
+                        ? 'rgba(0,255,180,0.04)'
+                        : 'var(--bg-depth)',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+            }}
+        >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div style={{ minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {candidate.first_name} {candidate.last_name}
+                        </span>
+                        {candidate.is_top_pick && (
+                            <span style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.46rem', letterSpacing: '0.12em', color: 'var(--neon-green)', background: 'rgba(0,255,100,0.1)', border: '1px solid rgba(0,255,100,0.2)', borderRadius: 3, padding: '1px 5px' }}>
+                                TOP PICK
+                            </span>
+                        )}
+                    </div>
+                    <p style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.58rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                        {candidate.academic_department} · {candidate.current_teaching_load}/{candidate.maximum_teaching_load} load
+                    </p>
+                </div>
+                <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
+                    <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', fontWeight: 900, color: scoreColor, lineHeight: 1 }}>
+                        {candidate.suitability_score}
+                    </span>
+                    <span style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.48rem', color: 'var(--text-muted)', display: 'block' }}>/100</span>
+                </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <ScoreBar label="SPECIALIZATION" value={candidate.breakdown.specialization} color="var(--neon-purple)" />
+                <ScoreBar label="PERFORMANCE" value={candidate.breakdown.performance} color="var(--neon-cyan)" />
+                <ScoreBar label="LOAD CAPACITY" value={candidate.breakdown.load} color="var(--neon-green)" />
+                <ScoreBar label="AVAILABILITY" value={candidate.breakdown.availability} color="var(--neon-orange)" />
+            </div>
+        </div>
+    );
+};
+
+// ── SE-02: Smart Match panel ───────────────────────────────────────────────
+const SmartMatchPanel = ({ subjectId, subjectCode, selectedFacultyId, onSelectFaculty }) => {
+    const [data, setData] = useState(null);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (!subjectId) { setData(null); return; }
+        setLoading(true);
+        adminApi.fetchFacultyRecommendations(subjectId)
+            .then(setData)
+            .catch(() => setData(null))
+            .finally(() => setLoading(false));
+    }, [subjectId]);
+
+    if (!subjectId) return null;
+
+    return (
+        <div style={{
+            marginTop: 12,
+            padding: '14px 16px',
+            background: 'rgba(0,0,0,0.25)',
+            border: '1px solid rgba(0,255,180,0.15)',
+            borderRadius: 14,
+        }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <span style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.58rem', fontWeight: 800, letterSpacing: '0.14em', color: 'var(--neon-green)', textTransform: 'uppercase' }}>
+                    ◈ AI MATCH — {subjectCode}
+                </span>
+                <span style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.52rem', color: 'var(--text-muted)', letterSpacing: '0.08em' }}>
+                    Ranked by suitability score (Spec 40% · Perf 30% · Load 20% · Avail 10%)
+                </span>
+            </div>
+
+            {loading && (
+                <p style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.62rem', color: 'var(--neon-cyan)', letterSpacing: '0.10em' }}>
+                    COMPUTING SCORES...
+                </p>
+            )}
+
+            {!loading && data && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 320, overflowY: 'auto' }}>
+                    {data.candidates.slice(0, 5).map(c => (
+                        <CandidateCard
+                            key={c.account_id}
+                            candidate={c}
+                            isSelected={String(selectedFacultyId) === String(c.account_id)}
+                            onSelect={() => onSelectFaculty(String(c.account_id))}
+                        />
+                    ))}
+                </div>
+            )}
+
+            {!loading && !data && (
+                <p style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.62rem', color: 'var(--text-muted)' }}>
+                    Could not load recommendations.
+                </p>
+            )}
+        </div>
+    );
+};
 
 // ── Cell renderers ─────────────────────────────────────────────────────────
 const LoadBarCellRenderer = ({ data }) => (
@@ -44,6 +177,7 @@ const ManageFaculty = () => {
     // Updated state for Multi-Select
     const [selectedFaculty, setSelectedFaculty] = useState('');
     const [selectedSubjects, setSelectedSubjects] = useState([]);
+    const [matchSubject, setMatchSubject] = useState(null); // { id, code } for smart match panel
 
     const [viewMode, setViewMode] = useState('table');
 
@@ -58,12 +192,19 @@ const ManageFaculty = () => {
         finally { setLoading(false); }
     };
 
-    const toggleSubject = (subjectId) => {
-        setSelectedSubjects(prev =>
-            prev.includes(subjectId)
+    const toggleSubject = (subjectId, subjectCode) => {
+        setSelectedSubjects(prev => {
+            const next = prev.includes(subjectId)
                 ? prev.filter(id => id !== subjectId)
-                : [...prev, subjectId]
-        );
+                : [...prev, subjectId];
+            // Show smart match for the most recently toggled-on subject
+            if (!prev.includes(subjectId)) {
+                setMatchSubject({ id: subjectId, code: subjectCode });
+            } else if (next.length === 0) {
+                setMatchSubject(null);
+            }
+            return next;
+        });
     };
 
     const handleAssign = async (e) => {
@@ -77,7 +218,8 @@ const ManageFaculty = () => {
             });
             toast.success(result.message || `Assignment confirmed.`);
             setSelectedFaculty('');
-            setSelectedSubjects([]); // Clear selections
+            setSelectedSubjects([]);
+            setMatchSubject(null);
             setFaculty(await adminApi.fetchFacultyList());
         } catch (err) {
             const errorMsg = err.response?.data?.detail || 'Assignment failed — professor may be at maximum load.';
@@ -143,10 +285,7 @@ const ManageFaculty = () => {
 
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                 <div>
-                    <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', fontWeight: 900, letterSpacing: '0.02em', color: 'var(--text-primary)' }}>
-                        Faculty Load Balancer
-                    </h1>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 0 }}>
                         Intelligent teaching load enforcement and semestral balancing.
                     </p>
                 </div>
@@ -320,7 +459,7 @@ const ManageFaculty = () => {
                                     <input
                                         type="checkbox"
                                         checked={selectedSubjects.includes(s.subject_id)}
-                                        onChange={() => toggleSubject(s.subject_id)}
+                                        onChange={() => toggleSubject(s.subject_id, s.subject_code)}
                                         style={{ accentColor: 'var(--student-gold)', width: 16, height: 16 }}
                                     />
                                     <div style={{ minWidth: 0 }}>
@@ -336,10 +475,18 @@ const ManageFaculty = () => {
                         </div>
                     </div>
 
+                    {/* SE-02: Smart Match recommendations */}
+                    <SmartMatchPanel
+                        subjectId={matchSubject?.id}
+                        subjectCode={matchSubject?.code}
+                        selectedFacultyId={selectedFaculty}
+                        onSelectFaculty={setSelectedFaculty}
+                    />
+
                     <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 8 }}>
-                        <button 
-                            type="submit" 
-                            disabled={submitting || isOverload || selectedSubjects.length === 0} 
+                        <button
+                            type="submit"
+                            disabled={submitting || isOverload || selectedSubjects.length === 0}
                             style={{ 
                                 padding: '12px 32px',
                                 borderRadius: 12,

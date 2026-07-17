@@ -1,6 +1,3 @@
-// frontend/src/components/ui/Skeleton.jsx
-
-
 import React from 'react';
 
 const pulse = {
@@ -10,7 +7,6 @@ const pulse = {
     borderRadius: 4,
 };
 
-// Inject keyframes once
 if (typeof document !== 'undefined' && !document.getElementById('skeleton-style')) {
     const s = document.createElement('style');
     s.id = 'skeleton-style';
@@ -19,11 +15,11 @@ if (typeof document !== 'undefined' && !document.getElementById('skeleton-style'
 }
 
 const Box = ({ w = '100%', h = 12, style = {} }) => (
-    <div style={{ ...pulse, width: w, height: h, borderRadius: 4, ...style }} />
+    <div aria-hidden="true" style={{ ...pulse, width: w, height: h, borderRadius: 4, ...style }} />
 );
 
 const Row = () => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 0', borderBottom: '1px solid var(--border-subtle)' }}>
+    <div aria-hidden="true" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 0', borderBottom: '1px solid var(--border-subtle)' }}>
         <Box w="30%" h={11} />
         <Box w="15%" h={11} />
         <Box w="15%" h={11} />
@@ -33,7 +29,7 @@ const Row = () => (
 );
 
 const Card = () => (
-    <div style={{ background: 'var(--bg-depth)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '16px' }}>
+    <div aria-hidden="true" style={{ background: 'var(--bg-depth)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '16px' }}>
         <Box w="40%" h={13} style={{ marginBottom: 10 }} />
         <Box w="80%" h={10} style={{ marginBottom: 6 }} />
         <Box w="60%" h={10} style={{ marginBottom: 14 }} />
@@ -42,27 +38,26 @@ const Card = () => (
 );
 
 const KpiTile = () => (
-    <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: 8, padding: '14px 16px' }}>
+    <div aria-hidden="true" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: 8, padding: '14px 16px' }}>
         <Box w="55%" h={9} style={{ marginBottom: 8 }} />
         <Box w="40%" h={22} />
     </div>
 );
 
 const KpiStrip = ({ count = 4 }) => (
-    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${count}, 1fr)`, gap: 12 }}>
+    <div aria-hidden="true" style={{ display: 'grid', gridTemplateColumns: `repeat(${count}, 1fr)`, gap: 12 }}>
         {Array.from({ length: count }).map((_, i) => <KpiTile key={i} />)}
     </div>
 );
 
 const Grid = ({ cols = 3, count = 6 }) => (
-    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 12 }}>
+    <div aria-hidden="true" style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 12 }}>
         {Array.from({ length: count }).map((_, i) => <Card key={i} />)}
     </div>
 );
 
 const Table = ({ rows = 5, cols = 4 }) => (
-    <div>
-        {/* Header */}
+    <div aria-hidden="true">
         <div style={{ display: 'flex', gap: 16, padding: '10px 0', borderBottom: '1px solid var(--border-default)', marginBottom: 4 }}>
             {Array.from({ length: cols }).map((_, i) => (
                 <Box key={i} w={`${100 / cols}%`} h={9} />
@@ -73,7 +68,7 @@ const Table = ({ rows = 5, cols = 4 }) => (
 );
 
 const PageHeader = () => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+    <div aria-hidden="true" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
             <Box w={220} h={18} style={{ marginBottom: 10 }} />
             <Box w={320} h={11} />

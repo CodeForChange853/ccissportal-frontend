@@ -13,9 +13,9 @@ const RetentionBanner = ({ retentionStatus }) => {
     if (!retentionStatus || retentionStatus.status === 'GOOD') return null;
 
     const config = {
-        AT_RISK:         { bg: 'rgba(230,162,60,0.12)', border: 'rgba(230,162,60,0.3)', color: '#e6a23c', icon: '⚠️', label: 'AT RISK' },
-        UNDER_RETENTION: { bg: 'rgba(245,108,108,0.12)', border: 'rgba(245,108,108,0.35)', color: '#f56c6c', icon: '🔴', label: 'UNDER RETENTION' },
-        DROPOUT_RISK:    { bg: 'rgba(192,57,43,0.15)', border: 'rgba(192,57,43,0.5)', color: '#c0392b', icon: '🚨', label: 'DROPOUT RISK' },
+        AT_RISK:         { bg: 'var(--student-warning-dim2)', border: 'rgba(230,162,60,0.3)', color: 'var(--student-warning)', icon: '⚠️', label: 'AT RISK' },
+        UNDER_RETENTION: { bg: 'rgba(245,108,108,0.12)', border: 'rgba(245,108,108,0.35)', color: 'var(--student-red-light)', icon: '🔴', label: 'UNDER RETENTION' },
+        DROPOUT_RISK:    { bg: 'rgba(192,57,43,0.15)', border: 'rgba(192,57,43,0.5)', color: 'var(--student-red)', icon: '🚨', label: 'DROPOUT RISK' },
     };
     const c = config[retentionStatus.status] || config.AT_RISK;
 
@@ -38,8 +38,23 @@ const RetentionBanner = ({ retentionStatus }) => {
     );
 };
 
+// ── SE-05: Priority badge ─────────────────────────────────────────────────────
+const PriorityBadge = ({ score }) => {
+    if (score == null) return null;
+    const color = score >= 70 ? 'var(--student-gold)' : score >= 40 ? 'var(--student-warning)' : 'rgba(245,240,232,0.3)';
+    return (
+        <span style={{
+            fontSize: 8, fontWeight: 900, padding: '1px 5px', borderRadius: 6,
+            background: `${color}18`, color, border: `1px solid ${color}44`,
+            fontFamily: 'var(--student-font-mono)', letterSpacing: 1,
+        }}>
+            {score}
+        </span>
+    );
+};
+
 // ── Subject draggable chip ────────────────────────────────────────────────────
-const SubjectChip = ({ sub, onDragStart, variant = 'next' }) => {
+const SubjectChip = ({ sub, onDragStart, onQuickAdd, variant = 'next' }) => {
     const styles = {
         next: {
             bg: 'var(--student-gold-dim2)',
@@ -49,11 +64,11 @@ const SubjectChip = ({ sub, onDragStart, variant = 'next' }) => {
         },
         back: {
             bg: variant === 'back' && sub.subject_type === 'MAJOR'
-                ? 'rgba(245,108,108,0.08)' : 'rgba(230,162,60,0.08)',
+                ? 'rgba(245,108,108,0.08)' : 'var(--student-warning-dim)',
             border: variant === 'back' && sub.subject_type === 'MAJOR'
                 ? '1px solid rgba(245,108,108,0.25)' : '1px solid rgba(230,162,60,0.25)',
-            codeColor: sub.subject_type === 'MAJOR' ? '#f56c6c' : '#e6a23c',
-            unitColor: sub.subject_type === 'MAJOR' ? '#f56c6c' : '#e6a23c',
+            codeColor: sub.subject_type === 'MAJOR' ? 'var(--student-red-light)' : 'var(--student-warning)',
+            unitColor: sub.subject_type === 'MAJOR' ? 'var(--student-red-light)' : 'var(--student-warning)',
         },
     };
     const s = styles[variant] || styles.next;
@@ -65,6 +80,7 @@ const SubjectChip = ({ sub, onDragStart, variant = 'next' }) => {
             style={{
                 padding: '10px 14px', borderRadius: 12, cursor: 'grab',
                 background: s.bg, border: s.border, transition: 'all 0.15s',
+                position: 'relative',
             }}
         >
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -77,6 +93,18 @@ const SubjectChip = ({ sub, onDragStart, variant = 'next' }) => {
                     }}>
                         {sub.subject_type}
                     </span>
+                )}
+                {variant === 'next' && <PriorityBadge score={sub.priority_score} />}
+                {variant === 'next' && onQuickAdd && (
+                    <button
+                        onClick={e => { e.stopPropagation(); onQuickAdd(sub); }}
+                        title="Quick add to next empty slot"
+                        style={{
+                            marginLeft: 'auto', background: 'none', border: '1px solid rgba(201,168,76,0.3)',
+                            borderRadius: 6, color: 'var(--student-gold)', cursor: 'pointer',
+                            fontSize: 10, padding: '1px 6px', fontFamily: 'var(--student-font-mono)',
+                        }}
+                    >+</button>
                 )}
             </div>
             <p style={{ fontSize: 10, color: s.unitColor, fontFamily: 'var(--student-font-mono)', marginTop: 2 }}>
@@ -92,13 +120,13 @@ const BackSubjectPrompt = ({ backSubjects, onAddAll, onSkip }) => {
 
     return (
         <div style={{
-            background: 'rgba(230,162,60,0.08)',
+            background: 'var(--student-warning-dim)',
             border: '1px solid rgba(230,162,60,0.25)',
             borderRadius: 12, padding: '14px 18px',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
         }}>
             <div>
-                <p style={{ fontSize: 12, fontWeight: 700, color: '#e6a23c', fontFamily: 'var(--student-font-mono)', margin: 0 }}>
+                <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--student-warning)', fontFamily: 'var(--student-font-mono)', margin: 0 }}>
                     📚 You have {backSubjects.length} back subject{backSubjects.length > 1 ? 's' : ''} to retake
                 </p>
                 <p style={{ fontSize: 11, color: 'rgba(245,240,232,0.6)', marginTop: 4, margin: '4px 0 0' }}>
@@ -111,7 +139,7 @@ const BackSubjectPrompt = ({ backSubjects, onAddAll, onSkip }) => {
                     style={{
                         padding: '8px 14px', borderRadius: 8, fontSize: 11, fontWeight: 700,
                         border: '1px solid rgba(230,162,60,0.5)', cursor: 'pointer',
-                        background: 'rgba(230,162,60,0.15)', color: '#e6a23c',
+                        background: 'var(--student-warning-dim2)', color: 'var(--student-warning)',
                         fontFamily: 'var(--student-font-mono)',
                     }}
                 >Add All</button>
@@ -195,6 +223,17 @@ const SmartEnrollmentTab = ({ academicStanding, onSuccess }) => {
         }
     };
 
+    // SE-05: one-click add to next empty slot
+    const handleQuickAdd = (subject) => {
+        setScheduleBlocks(prev => {
+            const emptySlot = Object.keys(prev).find(k => !prev[k]);
+            if (!emptySlot) return prev;
+            const alreadyIn = Object.values(prev).some(b => b?.subject_id === subject.subject_id);
+            if (alreadyIn) return prev;
+            return { ...prev, [emptySlot]: subject };
+        });
+    };
+
     const handleDragStart = (e, subject) => e.dataTransfer.setData('subject', JSON.stringify(subject));
 
     const handleDrop = (e, blockId) => {
@@ -254,12 +293,12 @@ const SmartEnrollmentTab = ({ academicStanding, onSuccess }) => {
                     {isIrregular && (
                         <div style={{
                             display: 'flex', alignItems: 'center', gap: 10,
-                            background: 'rgba(230,162,60,0.08)', border: '1px solid rgba(230,162,60,0.2)',
+                            background: 'var(--student-warning-dim)', border: '1px solid rgba(230,162,60,0.2)',
                             borderRadius: 10, padding: '10px 16px',
                         }}>
                             <span style={{ fontSize: 16 }}>📋</span>
                             <div>
-                                <p style={{ fontSize: 11, fontWeight: 900, color: '#e6a23c', fontFamily: 'var(--student-font-mono)', letterSpacing: 2, margin: 0 }}>
+                                <p style={{ fontSize: 11, fontWeight: 900, color: 'var(--student-warning)', fontFamily: 'var(--student-font-mono)', letterSpacing: 2, margin: 0 }}>
                                     IRREGULAR STUDENT
                                 </p>
                                 <p style={{ fontSize: 11, color: 'rgba(245,240,232,0.55)', marginTop: 2, margin: '2px 0 0' }}>
@@ -308,7 +347,7 @@ const SmartEnrollmentTab = ({ academicStanding, onSuccess }) => {
                             {recommendedSubjects.length > 0 ? recommendedSubjects.map(sub => {
                                 const placed = Object.values(scheduleBlocks).some(b => b?.subject_id === sub.subject_id);
                                 if (placed) return null;
-                                return <SubjectChip key={sub.subject_code} sub={sub} onDragStart={handleDragStart} variant="next" />;
+                                return <SubjectChip key={sub.subject_code} sub={sub} onDragStart={handleDragStart} onQuickAdd={handleQuickAdd} variant="next" />;
                             }) : (
                                 <p style={{ fontSize: 12, color: 'rgba(245,240,232,0.3)', width: '100%', textAlign: 'center', padding: '12px 0', fontFamily: 'var(--student-font-mono)' }}>
                                     No available subjects based on your prerequisites.
@@ -320,22 +359,22 @@ const SmartEnrollmentTab = ({ academicStanding, onSuccess }) => {
                     {/* Back subjects pool (only for irregular students) */}
                     {isIrregular && backSubjects.length > 0 && (
                         <div style={{ ...CARD, position: 'relative', overflow: 'hidden' }}>
-                            <div style={{ position: 'absolute', top: 0, left: 0, width: 3, height: '100%', background: '#e6a23c' }} />
+                            <div style={{ position: 'absolute', top: 0, left: 0, width: 3, height: '100%', background: 'var(--student-warning)' }} />
 
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                                 <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--student-white)', fontFamily: 'var(--student-font-display)', margin: 0 }}>
-                                    <span style={{ color: '#e6a23c' }}>🔁</span> Back Subjects (Retake)
+                                    <span style={{ color: 'var(--student-warning)' }}>🔁</span> Back Subjects (Retake)
                                 </h3>
                                 <span style={{
                                     fontSize: 10, fontWeight: 700, padding: '3px 12px', borderRadius: 20,
-                                    background: 'rgba(230,162,60,0.1)', color: '#e6a23c',
+                                    background: 'var(--student-warning-dim)', color: 'var(--student-warning)',
                                     border: '1px solid rgba(230,162,60,0.2)', fontFamily: 'var(--student-font-mono)',
                                 }}>{backSubjects.length} PENDING RETAKE</span>
                             </div>
 
                             <p style={{ fontSize: 12, color: 'var(--student-white-dim)', marginBottom: 16, lineHeight: 1.6 }}>
-                                These are your failed subjects. <strong style={{ color: '#f56c6c' }}>MAJOR</strong> back subjects must be resolved — drag them into your schedule or they will block further advancement.
-                                <strong style={{ color: '#e6a23c' }}> MINOR</strong> subjects can be retaken as extra load.
+                                These are your failed subjects. <strong style={{ color: 'var(--student-red-light)' }}>MAJOR</strong> back subjects must be resolved — drag them into your schedule or they will block further advancement.
+                                <strong style={{ color: 'var(--student-warning)' }}> MINOR</strong> subjects can be retaken as extra load.
                             </p>
 
                             <div style={{
@@ -416,7 +455,7 @@ const SmartEnrollmentTab = ({ academicStanding, onSuccess }) => {
                                                 {isBackSub && (
                                                     <span style={{
                                                         display: 'block', fontSize: 8, fontWeight: 900,
-                                                        color: '#e6a23c', fontFamily: 'var(--student-font-mono)',
+                                                        color: 'var(--student-warning)', fontFamily: 'var(--student-font-mono)',
                                                         letterSpacing: 1.5, marginBottom: 4,
                                                     }}>BACK SUBJECT</span>
                                                 )}
@@ -435,8 +474,8 @@ const SmartEnrollmentTab = ({ academicStanding, onSuccess }) => {
 
                         {collision && (
                             <div style={{
-                                background: 'rgba(192,57,43,0.1)', border: '1px solid rgba(192,57,43,0.2)',
-                                color: '#e74c3c', fontSize: 11, padding: 12, borderRadius: 12,
+                                background: 'var(--student-red-dim)', border: '1px solid rgba(192,57,43,0.2)',
+                                color: 'var(--student-red)', fontSize: 11, padding: 12, borderRadius: 12,
                                 textAlign: 'center', fontFamily: 'var(--student-font-mono)', fontWeight: 700, marginBottom: 16,
                             }}>
                                 Schedule Collision Detected! This slot is already occupied.
@@ -461,7 +500,7 @@ const SmartEnrollmentTab = ({ academicStanding, onSuccess }) => {
                                 {backCount > 0 && (
                                     <div style={{ textAlign: 'center' }}>
                                         <p style={{ fontSize: 10, color: 'rgba(230,162,60,0.6)', fontFamily: 'var(--student-font-mono)', margin: 0 }}>BACK SUBJECTS</p>
-                                        <p style={{ fontSize: 18, fontWeight: 900, color: '#e6a23c', margin: 0 }}>{backCount}</p>
+                                        <p style={{ fontSize: 18, fontWeight: 900, color: 'var(--student-warning)', margin: 0 }}>{backCount}</p>
                                     </div>
                                 )}
                             </div>

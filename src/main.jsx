@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./index.css";
+import "./styles/glass.css";
 import { ThemeProvider } from "./context/ThemeContext";
 
 if (import.meta.env.DEV) {

@@ -1,13 +1,44 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../../context/AuthContext';
+import { useAuth } from '../../../auth/AuthContext';
 import { useToast } from '../../../context/ToastContext';
 import Gradebook from '../components/Gradebook';
 import SubjectCard from '../components/SubjectCard';
 import FacultyProfile from '../components/FacultyProfile';
 import { facultyApi } from '../api/facultyApi';
 import ConsultationTab from '../components/ConsultationTab';
+import INCQueueTab from '../components/INCQueueTab';
 import FacultyLayout from '../layout/FacultyLayout';
 import FacultySidebarCard from '../components/FacultySidebarCard';
+import OnboardingWizard from '../../../components/ui/OnboardingWizard';
+
+const FACULTY_ONBOARDING_STEPS = [
+    {
+        icon: '👋',
+        title: 'Welcome, {name}!',
+        subtitle: 'Faculty Portal',
+        body: 'Manage your teaching load, update student grades, and handle consultation requests — all from one place.',
+    },
+    {
+        icon: '📚',
+        title: 'My Load & Gradebook',
+        subtitle: 'Your teaching assignments',
+        body: 'My Load shows every subject assigned to you this semester. Click a subject card to open its Gradebook and manage grades directly.',
+        highlight: 'My Load → click any card',
+    },
+    {
+        icon: '💬',
+        title: 'Student Consultations',
+        subtitle: 'Stay connected',
+        body: 'The Consultations tab shows all scheduled meetings with students. Review, confirm, or decline requests and keep communication organized.',
+    },
+    {
+        icon: '📋',
+        title: 'INC Completion Queue',
+        subtitle: 'Grade INC students',
+        body: 'When a student\'s INC request is routed to you by the secretariat, it appears here. Submit the final grade so the admin can post it to the official gradebook.',
+        cta: "Let's Go",
+    },
+];
 
 const FacultyDashboard = () => {
     const { user } = useAuth();
@@ -18,6 +49,7 @@ const FacultyDashboard = () => {
     const [selectedSubject, setSelectedSubject] = useState(null);
     const [fetching, setFetching] = useState(true);
     const [alerts, setAlerts] = useState([]);
+    const [showOnboarding, setShowOnboarding] = useState(false);
 
     useEffect(() => {
         (async () => {
@@ -36,6 +68,13 @@ const FacultyDashboard = () => {
             }
         })();
     }, []);
+
+    useEffect(() => {
+        if (!fetching && user?.id) {
+            const key = `nexenroll_onboarded_faculty_${user.id}`;
+            if (!localStorage.getItem(key)) setShowOnboarding(true);
+        }
+    }, [fetching]);
 
     const openGradebook = (sub) => {
         setSelectedSubject(sub);
@@ -65,6 +104,18 @@ const FacultyDashboard = () => {
     );
 
     return (
+        <>
+        {showOnboarding && (
+            <OnboardingWizard
+                steps={FACULTY_ONBOARDING_STEPS}
+                variant="portal"
+                userName={user?.username}
+                onComplete={() => {
+                    localStorage.setItem(`nexenroll_onboarded_faculty_${user.id}`, '1');
+                    setShowOnboarding(false);
+                }}
+            />
+        )}
         <FacultyLayout
             activeTab={activeTab}
             onTabChange={handleTabChange}
@@ -120,7 +171,7 @@ const FacultyDashboard = () => {
                             <Gradebook subject={selectedSubject} />
                         ) : (
                             <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--text-muted)', fontFamily: 'var(--font-code)', fontSize: 13 }}>
-                                SELECT A SUBJECT FROM "MY LOAD" FIRST
+                                SELECT A SUBJECT FROM &quot;MY LOAD&quot; FIRST
                             </div>
                         )}
                     </div>
@@ -129,10 +180,14 @@ const FacultyDashboard = () => {
                 {/* CONSULTATIONS */}
                 {activeTab === 'consultations' && <ConsultationTab />}
 
+                {/* INC QUEUE */}
+                {activeTab === 'inc-queue' && <INCQueueTab />}
+
                 {/* PROFILE */}
                 {activeTab === 'profile' && <FacultyProfile user={user} subjectCount={subjects.length} />}
             </div>
         </FacultyLayout>
+        </>
     );
 };
 

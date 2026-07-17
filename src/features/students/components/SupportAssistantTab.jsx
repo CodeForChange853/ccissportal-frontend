@@ -4,12 +4,17 @@ import client from '../../../api/client';
 
 const STATUS_CFG = {
     OPEN: { label: 'Open', color: 'var(--student-gold)', bg: 'var(--student-gold-dim)', border: 'rgba(201,168,76,0.3)' },
-    TRIAGED: { label: 'Triaged', color: '#60a5fa', bg: 'rgba(59,130,246,0.1)', border: 'rgba(59,130,246,0.3)' },
-    TRIASED: { label: 'Triaged', color: '#60a5fa', bg: 'rgba(59,130,246,0.1)', border: 'rgba(59,130,246,0.3)' },
     RESOLVED: { label: 'Resolved', color: 'var(--student-green)', bg: 'rgba(39,174,96,0.1)', border: 'rgba(39,174,96,0.3)' },
 };
 
-const CATEGORY_ICON = { Registrar: '📋', Cashier: '💳', 'IT Support': '💻' };
+const DEPARTMENTS = [
+    { value: 'FINANCE',          label: 'Finance Office',       icon: '💳' },
+    { value: 'REGISTRAR',        label: "Registrar's Office",   icon: '📋' },
+    { value: 'ACADEMIC AFFAIRS', label: 'Academic Affairs',     icon: '🎓' },
+    { value: 'IT SUPPORT',       label: 'IT Support / Technical', icon: '💻' },
+];
+
+const DEPT_MAP = Object.fromEntries(DEPARTMENTS.map(d => [d.value, d]));
 
 const inputStyle = {
     width: '100%',
@@ -31,6 +36,7 @@ const CARD = {
 };
 
 const SupportAssistantTab = () => {
+    const [department, setDepartment] = useState('');
     const [subject, setSubject] = useState('');
     const [description, setDescription] = useState('');
     const [submitting, setSubmitting] = useState(false);
@@ -38,7 +44,7 @@ const SupportAssistantTab = () => {
     const [error, setError] = useState(null);
     const [tickets, setTickets] = useState([]);
     const [fetching, setFetching] = useState(true);
-    const [warningModal, setWarningModal] = useState(null); // { violation_count, message }
+    const [warningModal, setWarningModal] = useState(null);
 
     const fetchTickets = async () => {
         setFetching(true);
@@ -56,12 +62,13 @@ const SupportAssistantTab = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!subject.trim() || !description.trim()) return;
+        if (!department || !subject.trim() || !description.trim()) return;
         setSubmitting(true);
         setError(null);
         try {
-            await studentApi.submitSupportTicket({ issue_subject: subject, issue_description: description });
+            await studentApi.submitSupportTicket({ department, issue_subject: subject, issue_description: description });
             setSuccess(true);
+            setDepartment('');
             setSubject('');
             setDescription('');
             fetchTickets();
@@ -88,10 +95,10 @@ const SupportAssistantTab = () => {
                 <div style={{ ...CARD, padding: 40, textAlign: 'center', maxWidth: 640, margin: '0 auto', width: '100%' }}>
                     <div style={{ fontSize: 48, marginBottom: 20 }}>✨</div>
                     <h3 style={{ fontSize: 22, fontWeight: 900, color: 'var(--student-green)', fontFamily: 'var(--student-font-display)', marginBottom: 12 }}>
-                        Ticket Successfully Routed
+                        Ticket Submitted Successfully
                     </h3>
                     <p style={{ fontSize: 13, color: 'var(--student-white-dim)', marginBottom: 28, lineHeight: 1.7, maxWidth: 360, margin: '0 auto 28px' }}>
-                        Our AI system has analyzed your request and routed it to the appropriate department. You will receive an update in this portal.
+                        Your request has been sent to the selected department. You will receive an update in this portal.
                     </p>
                     <button
                         onClick={() => setSuccess(false)}
@@ -116,26 +123,45 @@ const SupportAssistantTab = () => {
                             width: 52, height: 52, borderRadius: 14, flexShrink: 0,
                             background: 'var(--student-gold-dim)', display: 'flex',
                             alignItems: 'center', justifyContent: 'center', fontSize: 26,
-                        }}>🤖</div>
+                        }}>🎧</div>
                         <div>
                             <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--student-white)', fontFamily: 'var(--student-font-display)', marginBottom: 4 }}>
-                                NexEnroll Support Concierge
+                                NexEnroll Support Center
                             </h2>
                             <p style={{ fontSize: 12, color: 'var(--student-white-dim)', lineHeight: 1.6, fontStyle: 'italic' }}>
-                                Powered by NLP analysis. Describe your issue and our system will determine urgency and routing.
+                                Select the department that handles your concern, then describe your issue clearly.
                             </p>
                         </div>
                     </div>
 
                     {error && (
                         <div style={{
-                            background: 'rgba(192,57,43,0.1)', border: '1px solid rgba(192,57,43,0.2)',
-                            color: '#e74c3c', fontSize: 12, padding: 12, borderRadius: 10,
+                            background: 'var(--student-red-dim)', border: '1px solid rgba(192,57,43,0.2)',
+                            color: 'var(--student-red)', fontSize: 12, padding: 12, borderRadius: 10,
                             marginBottom: 20, fontFamily: 'var(--student-font-mono)', fontWeight: 700,
                         }}>⚠️ {error}</div>
                     )}
 
                     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                        <div>
+                            <label style={{
+                                display: 'block', fontSize: 10, fontWeight: 700,
+                                color: 'var(--student-gold)', textTransform: 'uppercase',
+                                letterSpacing: 3, marginBottom: 8, fontFamily: 'var(--student-font-mono)',
+                            }}>Department</label>
+                            <select
+                                required
+                                value={department}
+                                onChange={e => setDepartment(e.target.value)}
+                                style={{ ...inputStyle, cursor: 'pointer' }}
+                            >
+                                <option value="">Select the department that handles your concern…</option>
+                                {DEPARTMENTS.map(d => (
+                                    <option key={d.value} value={d.value}>{d.icon} {d.label}</option>
+                                ))}
+                            </select>
+                        </div>
+
                         <div>
                             <label style={{
                                 display: 'block', fontSize: 10, fontWeight: 700,
@@ -171,11 +197,12 @@ const SupportAssistantTab = () => {
 
                         <button
                             type="submit"
-                            disabled={submitting || !subject.trim() || !description.trim()}
+                            disabled={submitting || !department || !subject.trim() || !description.trim()}
                             style={{
                                 width: '100%', padding: '14px 0', borderRadius: 12,
-                                border: 'none', cursor: submitting || !subject.trim() || !description.trim() ? 'not-allowed' : 'pointer',
-                                opacity: submitting || !subject.trim() || !description.trim() ? 0.35 : 1,
+                                border: 'none',
+                                cursor: submitting || !department || !subject.trim() || !description.trim() ? 'not-allowed' : 'pointer',
+                                opacity: submitting || !department || !subject.trim() || !description.trim() ? 0.35 : 1,
                                 background: 'var(--student-gold)',
                                 color: 'var(--student-black)',
                                 fontSize: 13, fontWeight: 900, letterSpacing: 2, textTransform: 'uppercase',
@@ -191,9 +218,9 @@ const SupportAssistantTab = () => {
                                         borderTop: '2px solid black', borderRadius: '50%',
                                         animation: 'spin 0.6s linear infinite',
                                     }} />
-                                    Analyzing Intent...
+                                    Submitting…
                                 </>
-                            ) : 'Submit Request via AI'}
+                            ) : 'Submit Support Request'}
                         </button>
                     </form>
                 </div>
@@ -233,10 +260,10 @@ const SupportAssistantTab = () => {
                         {tickets.map(t => {
                             const id = t.ticket_id ?? t.id;
                             const status = t.ticket_status ?? t.status;
-                            const description = t.issue_description ?? t.description;
-                            const category = t.ai_predicted_category ?? t.category;
+                            const dept = t.department;
+                            const deptInfo = DEPT_MAP[dept];
 
-                            const sc = STATUS_CFG[status] ?? { label: status, color: '#94a3b8', bg: 'rgba(255,255,255,0.05)', border: 'rgba(255,255,255,0.1)' };
+                            const sc = STATUS_CFG[status] ?? { label: status, color: 'var(--student-white-dim)', bg: 'rgba(255,255,255,0.05)', border: 'rgba(255,255,255,0.1)' };
                             return (
                                 <div
                                     key={id}
@@ -244,7 +271,7 @@ const SupportAssistantTab = () => {
                                 >
                                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
                                         <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--student-white)', lineHeight: 1.5, flex: 1 }}>
-                                            {description}
+                                            {t.issue_description}
                                         </p>
                                         <span style={{
                                             flexShrink: 0, padding: '3px 10px', borderRadius: 20,
@@ -254,27 +281,22 @@ const SupportAssistantTab = () => {
                                         }}>{sc.label}</span>
                                     </div>
 
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: t.ai_response ? 12 : 0 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: t.resolution_note ? 12 : 0 }}>
                                         <span style={{ fontSize: 10, color: 'rgba(245,240,232,0.35)', fontFamily: 'var(--student-font-mono)', fontWeight: 700 }}>
                                             REF: {id}
                                         </span>
-                                        {category && (
+                                        {dept && (
                                             <span style={{
                                                 fontSize: 10, color: 'rgba(201,168,76,0.6)',
                                                 background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(201,168,76,0.1)',
                                                 padding: '2px 8px', borderRadius: 6, fontFamily: 'var(--student-font-mono)',
                                             }}>
-                                                {CATEGORY_ICON[category] ?? '📁'} {category.toUpperCase()}
-                                            </span>
-                                        )}
-                                        {t.confidence_score != null && (
-                                            <span style={{ fontSize: 10, color: 'rgba(245,240,232,0.3)', fontFamily: 'var(--student-font-mono)', fontStyle: 'italic' }}>
-                                                AI MATCH: {Math.round(t.confidence_score * 100)}%
+                                                {deptInfo?.icon ?? '📁'} {dept}
                                             </span>
                                         )}
                                     </div>
 
-                                    {t.ai_response && (
+                                    {t.resolution_note && (
                                         <div style={{
                                             background: 'var(--student-gold-dim2)',
                                             border: '1px solid rgba(201,168,76,0.1)',
@@ -286,9 +308,9 @@ const SupportAssistantTab = () => {
                                                 fontSize: 9, fontWeight: 900, color: 'var(--student-gold)',
                                                 textTransform: 'uppercase', letterSpacing: 2,
                                                 fontFamily: 'var(--student-font-mono)', marginBottom: 6,
-                                            }}>🤖 System Response / Action Taken</p>
+                                            }}>Resolution Note</p>
                                             <p style={{ fontSize: 12, color: 'var(--student-white-dim)', lineHeight: 1.6 }}>
-                                                {t.ai_response}
+                                                {t.resolution_note}
                                             </p>
                                         </div>
                                     )}
@@ -312,9 +334,9 @@ const SupportAssistantTab = () => {
                         padding: 40, textAlign: 'center', boxShadow: '0 32px 64px rgba(0,0,0,0.5)'
                     }}>
                         <div style={{ fontSize: 56, marginBottom: 20 }}>⚠️</div>
-                        <h3 style={{ 
-                            fontSize: 22, fontWeight: 900, color: '#f56c6c', 
-                            fontFamily: 'var(--student-font-display)', marginBottom: 16 
+                        <h3 style={{
+                            fontSize: 22, fontWeight: 900, color: 'var(--student-red-light)',
+                            fontFamily: 'var(--student-font-display)', marginBottom: 16
                         }}>
                             Academic Integrity Warning
                         </h3>
@@ -328,9 +350,9 @@ const SupportAssistantTab = () => {
                             background: 'rgba(220,38,38,0.1)', borderRadius: 12, 
                             padding: 16, marginBottom: 32, border: '1px solid rgba(220,38,38,0.2)' 
                         }}>
-                            <p style={{ 
-                                fontSize: 11, fontWeight: 900, color: '#f56c6c', 
-                                textTransform: 'uppercase', letterSpacing: 2, margin: '0 0 4px' 
+                            <p style={{
+                                fontSize: 11, fontWeight: 900, color: 'var(--student-red-light)',
+                                textTransform: 'uppercase', letterSpacing: 2, margin: '0 0 4px'
                             }}>Violation Count</p>
                             <p style={{ 
                                 fontSize: 24, fontWeight: 900, color: 'var(--student-white)', margin: 0 

@@ -7,7 +7,7 @@ export const useTheme = () => useContext(ThemeContext);
 
 export const ThemeProvider = ({ children }) => {
     const [theme, setTheme] = useState(() =>
-        localStorage.getItem('portal-theme') || 'light'
+        localStorage.getItem('portal-theme') || 'dark'
     );
 
 

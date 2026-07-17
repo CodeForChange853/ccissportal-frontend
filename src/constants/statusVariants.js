@@ -23,4 +23,5 @@ export const USER_ROLE_VARIANT = {
     ADMIN: 'info',
     FACULTY: 'warning',
     STUDENT: 'normal',
+    SECRETARY: 'accent',
 };

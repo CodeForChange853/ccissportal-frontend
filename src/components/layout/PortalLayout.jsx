@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../auth/AuthContext';
 import PortalSidebar from './PortalSidebar';
 import PortalTopBar from './PortalTopBar';
 
@@ -10,7 +10,10 @@ const PortalLayout = ({
   onNavigate,
   onRefresh,
   isRefreshing,
+  centerContent,
   rightContent,
+  onSearchOpen,
+  bannerSlot,
   profileSlot,
   portalName,
   portalSub,
@@ -28,7 +31,8 @@ const PortalLayout = ({
   }, [sidebarOpen]);
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg-base)' }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg-base)', position: 'relative' }}>
+      <a href="#main-content" className="skip-to-content">Skip to main content</a>
       {/* Sidebar */}
       <PortalSidebar
         groups={groups}
@@ -56,10 +60,15 @@ const PortalLayout = ({
           breadcrumb={breadcrumb}
           onRefresh={onRefresh}
           isRefreshing={isRefreshing}
+          centerContent={centerContent}
           rightContent={rightContent}
+          onSearchOpen={onSearchOpen}
         />
 
-        <main style={{
+        {/* Incident banner — rendered between topbar and page content */}
+        {bannerSlot}
+
+        <main id="main-content" style={{
           flex: 1,
           overflowY: 'auto',
           background: 'var(--bg-base)',

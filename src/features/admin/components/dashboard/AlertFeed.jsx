@@ -23,7 +23,7 @@ function fmtTime(iso) {
 
 const AlertEntry = ({ ticket }) => {
     const sev = SEVERITY_MAP[ticket.ticket_status] ?? SEVERITY_MAP.PENDING;
-    const catColor = CATEGORY_COLORS[ticket.ai_predicted_category] ?? 'var(--text-muted)';
+    const catColor = CATEGORY_COLORS[ticket.department] ?? 'var(--text-muted)';
 
     return (
         <div
@@ -82,7 +82,7 @@ const AlertEntry = ({ ticket }) => {
                 paddingTop: 1,
                 textAlign: 'right',
             }}>
-                {ticket.ai_predicted_category?.split(' ')[0] ?? '—'}
+                {ticket.department?.split(' ')[0] ?? '—'}
             </span>
         </div>
     );

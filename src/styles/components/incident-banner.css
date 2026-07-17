@@ -1,0 +1,8 @@
+@keyframes bannerSlide {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes incidentDot {
+  0%, 100% { opacity: 1; box-shadow: 0 0 5px currentColor; }
+  50%       { opacity: 0.45; box-shadow: none; }
+}

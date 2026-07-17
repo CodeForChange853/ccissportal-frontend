@@ -1,14 +1,16 @@
 import axios from 'axios';
 
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
+  baseURL: BASE_URL,
   headers: { 'Content-Type': 'application/json' },
-  timeout: 10000, // Instructional Guardrail #1: 10s Timeout
+  timeout: 10000,
+  withCredentials: true, // needed for HTTP-only refresh token cookie
 });
 
 apiClient.interceptors.request.use(
   (config) => {
-    // Check network status before sending
     if (!window.navigator.onLine) {
       return Promise.reject({ code: 'NETWORK_OFFLINE' });
     }
@@ -19,12 +21,22 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// ── Refresh token state ──────────────────────────────────────────────────────
+let _isRefreshing = false;
+let _refreshQueue = [];
+
+function _drainQueue(token, error) {
+  _refreshQueue.forEach(({ resolve, reject }) =>
+    error ? reject(error) : resolve(token)
+  );
+  _refreshQueue = [];
+}
+
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
-    // Instructional Guardrail #2: Error Categorization
+  async (error) => {
     if (error.code === 'NETWORK_OFFLINE' || !window.navigator.onLine) {
-       return Promise.reject('NETWORK_OFFLINE');
+      return Promise.reject('NETWORK_OFFLINE');
     }
 
     if (error.code === 'ECONNABORTED') {
@@ -32,17 +44,17 @@ apiClient.interceptors.response.use(
     }
 
     const status = error.response?.status;
-    const maintenanceInfo = error.response?.data?.detail?.maintenance ? error.response.data.detail : error.response?.data;
+    const maintenanceInfo = error.response?.data?.detail?.maintenance
+      ? error.response.data.detail
+      : error.response?.data;
     const errorDetail = error.response?.data?.detail;
-    
-    // Handle Banned Account
+
     if (status === 403 && errorDetail?.code === 'ACCOUNT_BANNED') {
       localStorage.removeItem('token');
       window.location.href = '/banned';
       return Promise.reject(error);
     }
 
-    // Handle 502, 503, 504 (Server Maintenance or Restarting)
     if ([502, 503, 504].includes(status)) {
       if (status === 503 && maintenanceInfo?.maintenance) {
         const isStatusPage = window.location.pathname === '/status';
@@ -56,12 +68,52 @@ apiClient.interceptors.response.use(
     }
 
     if (status === 401) {
-      const isLoginEndpoint = error.config?.url?.includes('/authentication/login');
-      if (!isLoginEndpoint) {
+      const url = error.config?.url || '';
+      const isAuthEndpoint =
+        url.includes('/authentication/login') ||
+        url.includes('/authentication/refresh');
+
+      if (!isAuthEndpoint && !error.config._retry) {
+        // Queue concurrent 401s while a refresh is in flight
+        if (_isRefreshing) {
+          return new Promise((resolve, reject) => {
+            _refreshQueue.push({ resolve, reject });
+          }).then((token) => {
+            error.config.headers['Authorization'] = `Bearer ${token}`;
+            return apiClient(error.config);
+          }).catch(() => Promise.reject(error));
+        }
+
+        error.config._retry = true;
+        _isRefreshing = true;
+
+        try {
+          const res = await apiClient.post('/authentication/refresh');
+          const newToken = res.data.access_token;
+          localStorage.setItem('token', newToken);
+          apiClient.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+          _drainQueue(newToken, null);
+          error.config.headers['Authorization'] = `Bearer ${newToken}`;
+          return apiClient(error.config);
+        } catch (refreshErr) {
+          _drainQueue(null, refreshErr);
+          localStorage.removeItem('token');
+          localStorage.removeItem('user_data');
+          window.location.href = '/login';
+          return Promise.reject(refreshErr);
+        } finally {
+          _isRefreshing = false;
+        }
+      }
+
+      // Login endpoint failed or refresh itself failed — don't redirect from login page
+      if (!url.includes('/authentication/login')) {
         localStorage.removeItem('token');
+        localStorage.removeItem('user_data');
         window.location.href = '/login';
       }
     }
+
     return Promise.reject(error);
   }
 );
@@ -72,13 +124,14 @@ const client = {
   put: (url, data, config) => apiClient.put(url, data, config),
   patch: (url, data, config) => apiClient.patch(url, data, config),
   delete: (url, config) => apiClient.delete(url, config),
-  
-  checkSystemStatus: () => axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/`),
 
-  // ── Auth 
+  checkSystemStatus: () => axios.get(`${BASE_URL}/`),
+
+  // ── Auth
   login: (credentials) => apiClient.post('/authentication/login', credentials),
+  logout: () => apiClient.post('/authentication/logout'),
   register: (data) => apiClient.post('/authentication/register', data),
-  validatePreReg: (student_number, passkey_code) => 
+  validatePreReg: (student_number, passkey_code) =>
     apiClient.post('/authentication/validate-pre-reg', { student_number, passkey_code }),
 
   scanDocument: (file, docType) => {
@@ -116,7 +169,12 @@ const client = {
   resolveTicket: (id) => apiClient.patch(`/support/${id}/resolve`),
 
   getFacultyLoad: () => apiClient.get('/faculty/load'),
-  getAnnouncements: () => axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/announcements`),
+  getAnnouncements: () => axios.get(`${BASE_URL}/announcements`),
+
+  // Wall of Shame — public endpoint, uses plain axios (no auth headers)
+  getWallOfShame: () => axios.get(`${BASE_URL}/authentication/wall-of-shame`),
+  reformViolator: (accountId) => apiClient.post(`/authentication/wall-of-shame/${accountId}/reform`),
+  getUnderwatchUsers: () => apiClient.get('/authentication/wall-of-shame/underwatch'),
 };
 
 export default client;

@@ -17,19 +17,22 @@ const EmptyState = ({
         textAlign: 'center',
     }}>
         {/* Icon */}
-        <div style={{
-            width: compact ? 36 : 48,
-            height: compact ? 36 : 48,
-            borderRadius: '50%',
-            background: 'var(--bg-depth)',
-            border: '1px solid var(--border-subtle)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: compact ? '1rem' : '1.3rem',
-            marginBottom: 4,
-            flexShrink: 0,
-        }}>
+        <div
+            aria-hidden="true"
+            style={{
+                width: compact ? 36 : 48,
+                height: compact ? 36 : 48,
+                borderRadius: '50%',
+                background: 'var(--bg-depth)',
+                border: '1px solid var(--border-subtle)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: compact ? '1rem' : '1.3rem',
+                marginBottom: 4,
+                flexShrink: 0,
+            }}
+        >
             {icon}
         </div>
 

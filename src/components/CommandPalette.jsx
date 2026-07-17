@@ -1,39 +1,65 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminApi } from '../features/admin/api/adminApi';
+import { useToast } from '../context/ToastContext';
+import '../styles/components/command-palette.css';
+
+const ACTION_LABELS = {
+    SUSPEND_USER:    { verb: 'Suspend',  color: '#ef4444' },
+    ACTIVATE_USER:   { verb: 'Activate', color: '#22c55e' },
+    MAINTENANCE_ON:  { verb: 'Enable',   color: '#f59e0b' },
+    MAINTENANCE_OFF: { verb: 'Disable',  color: '#22c55e' },
+};
+
+const TYPE_ORDER = ['ACTION', 'STUDENT', 'FACULTY', 'SUBJECT'];
+const TYPE_LABEL = { ACTION: 'Actions', STUDENT: 'Students', FACULTY: 'Faculty', SUBJECT: 'Subjects' };
 
 const resolveDestination = (result) => {
     switch (result.result_type) {
-        case 'STUDENT': return `/portal/admin/users`;
+        case 'STUDENT': return `/portal/admin/grading?studentId=${result.result_id}`;
         case 'FACULTY': return `/portal/admin/faculty`;
         case 'SUBJECT': return `/portal/admin/curriculum`;
-        default: return `/portal/admin`;
+        default:        return `/portal/admin`;
     }
 };
 
+const RelevanceBar = ({ score }) => (
+    <div className="cp-relevance">
+        <div className="cp-relevance-track">
+            <div className="cp-relevance-fill" style={{ width: `${Math.round(score * 100)}%` }} />
+        </div>
+    </div>
+);
+
 const CommandPalette = ({ isOpen, onClose }) => {
-    const navigate = useNavigate();
-    const inputRef = useRef(null);
-    const listRef = useRef(null);
+    const navigate   = useNavigate();
+    const { toast }  = useToast();
+    const inputRef   = useRef(null);
+    const listRef    = useRef(null);
     const debounceRef = useRef(null);
     const queryCache = useRef(new Map());
 
-    const [query, setQuery] = useState('');
-    const [results, setResults] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [activeIdx, setActiveIdx] = useState(0);
-    const [searched, setSearched] = useState(false);
+    const [query,         setQuery]         = useState('');
+    const [results,       setResults]       = useState([]);
+    const [loading,       setLoading]       = useState(false);
+    const [activeIdx,     setActiveIdx]     = useState(0);
+    const [searched,      setSearched]      = useState(false);
+    const [confirmTarget, setConfirmTarget] = useState(null);
+    const [executing,     setExecuting]     = useState(false);
 
     useEffect(() => {
         if (isOpen) {
-            setQuery(''); setResults([]); setSearched(false); setActiveIdx(0);
+            setQuery(''); setResults([]); setSearched(false);
+            setActiveIdx(0); setConfirmTarget(null); setExecuting(false);
             setTimeout(() => inputRef.current?.focus(), 80);
         }
     }, [isOpen]);
 
     const handleQueryChange = useCallback((e) => {
         const value = e.target.value;
-        setQuery(value); setActiveIdx(0);
+        setQuery(value);
+        setActiveIdx(0);
+        setConfirmTarget(null);
         clearTimeout(debounceRef.current);
 
         if (!value.trim()) {
@@ -44,90 +70,208 @@ const CommandPalette = ({ isOpen, onClose }) => {
         debounceRef.current = setTimeout(async () => {
             const key = value.trim();
             const cached = queryCache.current.get(key);
-            const CACHE_TTL_MS = 60_000; // 60 seconds
+            const CACHE_TTL_MS = 60_000;
 
             if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
-                setResults(cached.results);
-                setSearched(true);
-                setLoading(false);
-                return;
+                setResults(cached.results); setSearched(true); setLoading(false); return;
             }
 
             try {
                 const data = await adminApi.omniSearch(key);
-                const results = data ?? [];
-                queryCache.current.set(key, { results, ts: Date.now() });
-                setResults(results); setSearched(true);
+                const fresh = data ?? [];
+                queryCache.current.set(key, { results: fresh, ts: Date.now() });
+                setResults(fresh); setSearched(true);
             } catch {
                 setResults([]); setSearched(true);
             } finally { setLoading(false); }
-        }, 300);
+        }, 150);
     }, []);
 
-    // ── THE DEEP LINK ──
+    const flatResults = TYPE_ORDER.flatMap(type => results.filter(r => r.result_type === type));
+
     const handleSelect = useCallback((result) => {
+        if (result.result_type === 'ACTION') { setConfirmTarget(result); return; }
         const dest = resolveDestination(result);
-        // Pushes the exact name/code into the URL so the target page can catch it
-        navigate(`${dest}?q=${encodeURIComponent(result.primary_text)}`);
+        const withQuery = result.result_type === 'STUDENT'
+            ? dest
+            : `${dest}?q=${encodeURIComponent(result.primary_text)}`;
+        navigate(withQuery);
         onClose();
     }, [navigate, onClose]);
 
-    const handleKeyDown = useCallback((e) => {
-        if (e.key === 'Escape') { onClose(); return; }
-        if (!results.length) return;
+    const executeAction = useCallback(async (result) => {
+        setExecuting(true);
+        try {
+            if (result.action_type === 'SUSPEND_USER') {
+                await adminApi.setUserActiveStatus(result.result_id, false);
+                toast.success(`${result.primary_text} suspended.`);
+            } else if (result.action_type === 'ACTIVATE_USER') {
+                await adminApi.setUserActiveStatus(result.result_id, true);
+                toast.success(`${result.primary_text} activated.`);
+            } else if (result.action_type === 'MAINTENANCE_ON') {
+                await adminApi.updateSystemSettings({ is_maintenance_mode: true });
+                toast.success('Maintenance mode enabled.');
+            } else if (result.action_type === 'MAINTENANCE_OFF') {
+                await adminApi.updateSystemSettings({ is_maintenance_mode: false });
+                toast.success('Maintenance mode disabled.');
+            }
+            onClose();
+        } catch {
+            toast.error('Action failed. Please try again.');
+            setExecuting(false);
+            setConfirmTarget(null);
+        }
+    }, [onClose, toast]);
 
-        if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIdx(i => Math.min(i + 1, results.length - 1)); }
-        else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIdx(i => Math.max(i - 1, 0)); }
-        else if (e.key === 'Enter') { e.preventDefault(); if (results[activeIdx]) handleSelect(results[activeIdx]); }
-    }, [results, activeIdx, handleSelect, onClose]);
+    const handleKeyDown = useCallback((e) => {
+        if (e.key === 'Escape') {
+            if (confirmTarget) { setConfirmTarget(null); return; }
+            onClose(); return;
+        }
+        if (!flatResults.length) return;
+        if (e.key === 'ArrowDown')      { e.preventDefault(); setActiveIdx(i => Math.min(i + 1, flatResults.length - 1)); }
+        else if (e.key === 'ArrowUp')   { e.preventDefault(); setActiveIdx(i => Math.max(i - 1, 0)); }
+        else if (e.key === 'Enter')     { e.preventDefault(); if (flatResults[activeIdx]) handleSelect(flatResults[activeIdx]); }
+    }, [flatResults, activeIdx, handleSelect, onClose, confirmTarget]);
 
     useEffect(() => {
-        const activeEl = listRef.current?.children[activeIdx];
+        const activeEl = listRef.current?.querySelector('[data-active="true"]');
         activeEl?.scrollIntoView({ block: 'nearest' });
     }, [activeIdx]);
 
     if (!isOpen) return null;
 
+    const grouped = TYPE_ORDER
+        .map(type => ({ type, items: results.filter(r => r.result_type === type) }))
+        .filter(g => g.items.length > 0);
+
+    let flatIdx = 0;
+
     return (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '15vh' }}>
-            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }} onClick={onClose} />
-            <div style={{ position: 'relative', width: '100%', maxWidth: 540, background: 'var(--bg-surface)', border: '1px solid var(--border-accent)', borderRadius: '12px', boxShadow: 'var(--shadow-modal)', overflow: 'hidden' }} className="animate-fade-in-up">
+        <div className="cp-overlay">
+            <div className="cp-backdrop" onClick={onClose} />
+            <div className="cp-panel animate-fade-in-up">
 
-                <div style={{ display: 'flex', alignItems: 'center', padding: '16px', borderBottom: '1px solid var(--border-subtle)' }}>
-                    <span style={{ fontSize: '1.2rem', marginRight: 12 }}>⚡</span>
+                <div className="cp-input-bar">
+                    <span className="cp-input-icon">⚡</span>
                     <input
-                        ref={inputRef} value={query} onChange={handleQueryChange} onKeyDown={handleKeyDown}
-                        placeholder="Type a command (e.g. 'Suspend John' or 'Manage CS101')..."
-                        style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-primary)', fontSize: '1.1rem', fontFamily: 'var(--font-sans)' }}
+                        ref={inputRef} value={query}
+                        onChange={handleQueryChange} onKeyDown={handleKeyDown}
+                        className="cp-input"
+                        placeholder="Search or command — 'suspend John', 'maintenance on', 'CS101'..."
                     />
-                    <kbd style={{ fontFamily: 'var(--font-code)', fontSize: '0.65rem', background: 'var(--bg-depth)', border: '1px solid var(--border-default)', padding: '2px 6px', borderRadius: 4, color: 'var(--text-muted)' }}>ESC</kbd>
+                    <kbd className="cp-esc">ESC</kbd>
                 </div>
 
-                <div style={{ maxHeight: 340, overflowY: 'auto', padding: '8px 0' }}>
-                    {loading && <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', fontFamily: 'var(--font-terminal)' }}>SCANNING DATABASES...</div>}
-                    {!loading && searched && results.length === 0 && <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', fontFamily: 'var(--font-terminal)' }}>NO MATCHES FOR "{query.toUpperCase()}"</div>}
+                {confirmTarget && (
+                    <div className="cp-confirm">
+                        <p className="cp-confirm-label">Confirm Action</p>
+                        <p className="cp-confirm-text">
+                            <span style={{ color: ACTION_LABELS[confirmTarget.action_type]?.color }}>
+                                {ACTION_LABELS[confirmTarget.action_type]?.verb}
+                            </span>
+                            {' '}{confirmTarget.primary_text}
+                            {confirmTarget.secondary_text && (
+                                <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '0.8rem' }}>
+                                    {' '}— {confirmTarget.secondary_text}
+                                </span>
+                            )}
+                        </p>
+                        <div className="cp-confirm-btns">
+                            <button
+                                onClick={() => executeAction(confirmTarget)}
+                                disabled={executing}
+                                className="cp-confirm-btn"
+                                style={{
+                                    background: ACTION_LABELS[confirmTarget.action_type]?.color,
+                                    color: '#fff', border: 'none',
+                                    cursor: executing ? 'wait' : 'pointer',
+                                    opacity: executing ? 0.7 : 1,
+                                }}>
+                                {executing ? 'EXECUTING...' : 'CONFIRM'}
+                            </button>
+                            <button
+                                onClick={() => setConfirmTarget(null)}
+                                disabled={executing}
+                                className="cp-confirm-btn cp-confirm-btn-cancel">
+                                CANCEL
+                            </button>
+                        </div>
+                    </div>
+                )}
 
-                    {!loading && results.length > 0 && (
-                        <ul ref={listRef} style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-                            {results.map((r, i) => {
-                                const active = i === activeIdx;
-                                return (
-                                    <li key={`${r.result_type}-${r.result_id}`} onClick={() => handleSelect(r)} onMouseEnter={() => setActiveIdx(i)}
-                                        style={{ padding: '12px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: active ? 'var(--bg-elevated)' : 'transparent', borderLeft: active ? '3px solid var(--neon-cyan)' : '3px solid transparent' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                            <span style={{ color: active ? 'var(--neon-cyan)' : 'var(--text-primary)', fontWeight: 600, fontSize: '0.9rem' }}>{r.primary_text}</span>
-                                            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontFamily: 'var(--font-terminal)' }}>{r.secondary_text}</span>
+                {!confirmTarget && (
+                    <div className="cp-results" ref={listRef}>
+                        {loading && <div className="cp-state-msg">SCANNING...</div>}
+
+                        {!loading && searched && results.length === 0 && (
+                            <div className="cp-state-msg">NO MATCHES FOR &quot;{query.toUpperCase()}&quot;</div>
+                        )}
+
+                        {!loading && !searched && (
+                            <div className="cp-hint">
+                                Try:{' '}
+                                <span className="cp-hint-example">&quot;suspend [name]&quot;</span> ·{' '}
+                                <span className="cp-hint-example">&quot;maintenance on&quot;</span> ·{' '}
+                                <span className="cp-hint-example">&quot;CS101&quot;</span>
+                            </div>
+                        )}
+
+                        {!loading && grouped.map(({ type, items }) => (
+                            <div key={type}>
+                                <div className="cp-section-header">{TYPE_LABEL[type]}</div>
+
+                                {items.map((r) => {
+                                    const thisIdx  = flatIdx++;
+                                    const active   = thisIdx === activeIdx;
+                                    const isAction = r.result_type === 'ACTION';
+                                    const actionMeta = isAction ? ACTION_LABELS[r.action_type] : null;
+                                    const accentColor = isAction
+                                        ? (actionMeta?.color ?? 'var(--accent-gold)')
+                                        : 'var(--neon-cyan)';
+
+                                    return (
+                                        <div
+                                            key={`${r.result_type}-${r.result_id}-${r.action_type}`}
+                                            data-active={active}
+                                            onClick={() => handleSelect(r)}
+                                            onMouseEnter={() => setActiveIdx(thisIdx)}
+                                            className="cp-result-item"
+                                            style={{
+                                                background: active ? 'var(--bg-elevated)' : 'transparent',
+                                                borderLeft: active ? `3px solid ${accentColor}` : '3px solid transparent',
+                                            }}>
+                                            <div className="cp-result-primary">
+                                                <span className="cp-result-name" style={{ color: active ? accentColor : 'var(--text-primary)' }}>
+                                                    {isAction && actionMeta && (
+                                                        <span style={{ color: actionMeta.color, marginRight: 6 }}>{actionMeta.verb}</span>
+                                                    )}
+                                                    {r.primary_text}
+                                                </span>
+                                                {r.secondary_text && (
+                                                    <span className="cp-result-sub" style={{ color: 'var(--text-muted)' }}>
+                                                        {r.secondary_text}
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            <div className="cp-result-meta">
+                                                {!isAction && <RelevanceBar score={r.relevance_score ?? 1} />}
+                                                <span className="cp-result-tag" style={{
+                                                    border: `1px solid ${isAction ? (actionMeta?.color ?? 'var(--border-subtle)') : 'var(--border-subtle)'}`,
+                                                    color: isAction ? (actionMeta?.color ?? 'var(--text-secondary)') : 'var(--text-secondary)',
+                                                }}>
+                                                    {isAction ? r.action_type?.replace('_', ' ') : r.result_type}
+                                                </span>
+                                                {active && <kbd style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>↵</kbd>}
+                                            </div>
                                         </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                            <span style={{ fontSize: '0.65rem', fontFamily: 'var(--font-terminal)', padding: '2px 6px', border: '1px solid var(--border-subtle)', borderRadius: 4, color: 'var(--text-secondary)' }}>{r.result_type}</span>
-                                            {active && <kbd style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>↵</kbd>}
-                                        </div>
-                                    </li>
-                                );
-                            })}
-                        </ul>
-                    )}
-                </div>
+                                    );
+                                })}
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
     );

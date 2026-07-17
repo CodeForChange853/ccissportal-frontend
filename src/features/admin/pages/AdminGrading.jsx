@@ -2,7 +2,8 @@
 // READ-ONLY Academic Records viewer.
 // Admins can inspect a student's transcript but cannot modify any grade.
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import 'ag-grid-community/styles/ag-grid.css';
@@ -74,10 +75,255 @@ const TranscriptSummary = ({ records }) => {
     );
 };
 
+// ── SE-04: At-Risk panel ───────────────────────────────────────────────────
+const RISK_COLOR = { HIGH: 'var(--color-danger)', MODERATE: 'var(--color-warning)', LOW: 'var(--color-success)' };
+const RISK_BG    = { HIGH: 'rgba(239,68,68,0.06)', MODERATE: 'rgba(245,158,11,0.06)', LOW: 'rgba(34,197,94,0.06)' };
+
+const AtRiskPanel = ({ students, loading, onViewStudent, searchResults }) => {
+    if (loading) return (
+        <CyberPanel title="At-Risk Intelligence" subtitle="Loading at-risk assessment…">
+            <Skeleton.Table rows={3} cols={4} />
+        </CyberPanel>
+    );
+    if (!students || students.length === 0) return (
+        <CyberPanel title="At-Risk Intelligence" subtitle="Rule-based risk assessment across all active students">
+            <EmptyState icon="✅" title="No at-risk students detected" subtitle="All active students are below the moderate threshold (score ≥ 40)." compact />
+        </CyberPanel>
+    );
+
+    const highlighted = (searchResults ?? []).map(s => s.account_id);
+
+    return (
+        <CyberPanel
+            title="At-Risk Intelligence"
+            subtitle={`${students.length} student${students.length !== 1 ? 's' : ''} flagged (score ≥ 40) — rule-based engine, zero AI cost`}
+        >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {students.map(s => {
+                    const color  = RISK_COLOR[s.risk_level] || 'var(--text-muted)';
+                    const bg     = RISK_BG[s.risk_level]    || 'transparent';
+                    const isHl   = highlighted.includes(s.student_account_id);
+                    return (
+                        <div
+                            key={s.student_account_id}
+                            style={{
+                                background: isHl ? 'rgba(186,151,49,0.06)' : bg,
+                                border: `1px solid ${isHl ? 'rgba(186,151,49,0.35)' : `${color}28`}`,
+                                borderRadius: 8, padding: '12px 14px',
+                                display: 'flex', gap: 12, alignItems: 'flex-start',
+                            }}
+                        >
+                            {/* Score badge */}
+                            <div style={{
+                                minWidth: 44, height: 44, borderRadius: 8, flexShrink: 0,
+                                background: `${color}12`, border: `1px solid ${color}30`,
+                                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                            }}>
+                                <span style={{ fontFamily: 'var(--font-terminal)', fontSize: '1rem', fontWeight: 800, color, lineHeight: 1 }}>
+                                    {s.risk_score}
+                                </span>
+                                <span style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.48rem', color, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                                    {s.risk_level}
+                                </span>
+                            </div>
+                            {/* Info */}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                    <span style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                                        {s.student_name}
+                                    </span>
+                                    {s.student_number && (
+                                        <span style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.60rem', color: 'var(--accent-light)' }}>
+                                            #{s.student_number}
+                                        </span>
+                                    )}
+                                    {s.failed_major_count > 0 && (
+                                        <span style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.56rem', padding: '2px 6px', borderRadius: 4, background: 'rgba(239,68,68,0.1)', color: 'var(--color-danger)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                                            {s.failed_major_count} MAJOR FAIL{s.failed_major_count > 1 ? 'S' : ''}
+                                        </span>
+                                    )}
+                                    {s.gwa != null && (
+                                        <span style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.56rem', color: gradeColor(s.gwa) }}>
+                                            GWA {s.gwa}
+                                        </span>
+                                    )}
+                                </div>
+                                {s.top_intervention && (
+                                    <p style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.64rem', color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.45 }}>
+                                        › {s.top_intervention}
+                                    </p>
+                                )}
+                            </div>
+                            {/* Action */}
+                            <button
+                                style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.58rem', color: 'var(--accent-light)', background: 'none', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', paddingTop: 2 }}
+                                onClick={() => onViewStudent({ account_id: s.student_account_id, email_address: s.email_address })}
+                            >
+                                VIEW →
+                            </button>
+                        </div>
+                    );
+                })}
+            </div>
+        </CyberPanel>
+    );
+};
+
+// ── INC Posting Queue ──────────────────────────────────────────────────────
+const INCPostingQueue = () => {
+    const { toast } = useToast();
+    const [requests, setRequests] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [rejectTarget, setRejectTarget] = useState(null);
+    const [rejectReason, setRejectReason] = useState('');
+    const [processing, setProcessing] = useState(false);
+
+    const load = async () => {
+        setLoading(true);
+        try {
+            const data = await adminApi.fetchINCPostingQueue();
+            setRequests(data ?? []);
+        } catch {
+            toast.error('Failed to load INC posting queue.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => { load(); }, []);
+
+    const handlePost = async (req) => {
+        setProcessing(true);
+        try {
+            await adminApi.advanceINCCompletion(req.id, { new_state: 'POSTED' });
+            toast.success(`INC grade posted for request #${req.id}.`);
+            setRequests(prev => prev.filter(r => r.id !== req.id));
+        } catch (err) {
+            toast.error(err.response?.data?.detail || 'Failed to post grade.');
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    const handleReject = async () => {
+        if (!rejectTarget || !rejectReason.trim()) return;
+        setProcessing(true);
+        try {
+            await adminApi.advanceINCCompletion(rejectTarget.id, {
+                new_state: 'REJECTED',
+                rejection_reason: rejectReason.trim(),
+            });
+            toast.success(`INC request #${rejectTarget.id} rejected.`);
+            setRequests(prev => prev.filter(r => r.id !== rejectTarget.id));
+            setRejectTarget(null);
+            setRejectReason('');
+        } catch (err) {
+            toast.error(err.response?.data?.detail || 'Failed to reject request.');
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    if (loading) return <CyberPanel title="INC Posting Queue"><Skeleton.Table rows={4} cols={5} /></CyberPanel>;
+
+    return (
+        <>
+            <CyberPanel
+                title="INC Posting Queue"
+                subtitle={`${requests.length} completion request${requests.length !== 1 ? 's' : ''} awaiting grade posting`}
+            >
+                {requests.length === 0 ? (
+                    <EmptyState icon="✅" title="Queue is clear" subtitle="No INC completion requests are pending admin posting." compact />
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {requests.map(req => (
+                            <div key={req.id} style={{
+                                background: 'var(--bg-depth)', border: '1px solid var(--border-subtle)',
+                                borderRadius: 10, padding: '14px 16px',
+                                display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
+                            }}>
+                                <div style={{ flex: 1, minWidth: 160 }}>
+                                    <p style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 2 }}>Request #{req.id}</p>
+                                    <p style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                                        Student #{req.student_account_id}
+                                    </p>
+                                    <p style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.64rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                                        Gradebook entry #{req.gradebook_entry_id}
+                                    </p>
+                                </div>
+                                <div style={{ textAlign: 'center' }}>
+                                    <p style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.58rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Faculty Grade</p>
+                                    <p style={{ fontFamily: 'var(--font-terminal)', fontSize: '1.3rem', fontWeight: 800, color: gradeColor(req.faculty_final_grade) }}>
+                                        {req.faculty_final_grade ?? '—'}
+                                    </p>
+                                </div>
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    <button
+                                        className="btn-primary"
+                                        style={{ fontSize: '0.6rem', padding: '6px 14px' }}
+                                        onClick={() => handlePost(req)}
+                                        disabled={processing}
+                                    >
+                                        POST GRADE
+                                    </button>
+                                    <button
+                                        className="btn-danger"
+                                        style={{ fontSize: '0.6rem', padding: '6px 14px' }}
+                                        onClick={() => { setRejectTarget(req); setRejectReason(''); }}
+                                        disabled={processing}
+                                    >
+                                        REJECT
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </CyberPanel>
+
+            {rejectTarget && (
+                <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+                    <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: 20, padding: 28, width: '100%', maxWidth: 460, boxShadow: 'var(--shadow-accent)' }}>
+                        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
+                            Reject INC Request #{rejectTarget.id}
+                        </h3>
+                        <p style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.68rem', color: 'var(--text-muted)', marginBottom: 18 }}>
+                            Student #{rejectTarget.student_account_id} · Faculty grade: {rejectTarget.faculty_final_grade ?? '—'}
+                        </p>
+                        <label style={{ display: 'block', fontFamily: 'var(--font-terminal)', fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>
+                            Rejection Reason *
+                        </label>
+                        <textarea
+                            value={rejectReason}
+                            onChange={e => setRejectReason(e.target.value)}
+                            rows={3}
+                            placeholder="Explain why this grade cannot be posted…"
+                            style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-input)', border: '1px solid var(--border-default)', borderRadius: 8, padding: '10px 12px', color: 'var(--text-primary)', fontFamily: 'var(--font-code)', fontSize: '0.78rem', outline: 'none', resize: 'vertical' }}
+                            onFocus={e => { e.target.style.borderColor = 'var(--color-danger)'; }}
+                            onBlur={e => { e.target.style.borderColor = 'var(--border-default)'; }}
+                        />
+                        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
+                            <button className="btn-ghost" onClick={() => setRejectTarget(null)} disabled={processing}>Cancel</button>
+                            <button
+                                className="btn-danger"
+                                onClick={handleReject}
+                                disabled={processing || !rejectReason.trim()}
+                            >
+                                {processing ? 'Processing…' : 'CONFIRM REJECT'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
+    );
+};
+
 // ── Main component ─────────────────────────────────────────────────────────
 const AdminGrading = () => {
     const { toast } = useToast();
 
+    const [viewTab, setViewTab] = useState('transcript');
     const [query, setQuery] = useState('');
     const [results, setResults] = useState([]);
     const [searching, setSearching] = useState(false);
@@ -85,6 +331,26 @@ const AdminGrading = () => {
     const [viewingStudent, setViewingStudent] = useState(null);
     const [loadingRecord, setLoadingRecord] = useState(false);
     const [error, setError] = useState(null);
+
+    // SE-04 — at-risk list
+    const [atRiskStudents, setAtRiskStudents] = useState([]);
+    const [loadingAtRisk, setLoadingAtRisk] = useState(true);
+
+    useEffect(() => {
+        adminApi.fetchAtRiskStudents(40)
+            .then(data => setAtRiskStudents(data ?? []))
+            .catch(() => {})
+            .finally(() => setLoadingAtRisk(false));
+    }, []);
+
+    // Deep-link from command palette: ?studentId=<account_id>
+    const [searchParams, setSearchParams] = useSearchParams();
+    useEffect(() => {
+        const studentId = Number(searchParams.get('studentId'));
+        if (!studentId || viewingStudent) return;
+        setSearchParams({}, { replace: true }); // clean URL
+        openStudentRecord({ account_id: studentId, email_address: `#${studentId}` });
+    }, [searchParams]);
 
     const handleSearch = async (e) => {
         e?.preventDefault();
@@ -143,20 +409,50 @@ const AdminGrading = () => {
 
             {/* ✅ Shared PageHeader */}
             <PageHeader
-                title="Academic Records"
-                subtitle="Read-only transcript viewer — grade entry is handled by assigned faculty only."
+                subtitle="Read-only transcript viewer · INC grade posting queue."
                 badge={viewOnlyBadge}
             />
 
-            {error && (
+            {/* Tab switcher */}
+            <div style={{ display: 'flex', gap: 8 }}>
+                {[
+                    { id: 'transcript', label: 'Transcript Viewer' },
+                    { id: 'inc-posting', label: 'INC Posting Queue' },
+                ].map(tab => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setViewTab(tab.id)}
+                        style={{
+                            padding: '7px 18px', borderRadius: 100, cursor: 'pointer', transition: 'all 0.15s',
+                            fontFamily: 'var(--font-terminal)', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.05em',
+                            border: '1px solid var(--border-default)',
+                            background: viewTab === tab.id ? 'var(--portal-accent)' : 'var(--bg-surface)',
+                            color: viewTab === tab.id ? '#fff' : 'var(--text-secondary)',
+                            boxShadow: viewTab === tab.id ? 'var(--shadow-accent)' : 'none',
+                        }}
+                    >
+                        {tab.label}
+                    </button>
+                ))}
+            </div>
+
+            {viewTab === 'inc-posting' && <INCPostingQueue />}
+
+            {viewTab === 'transcript' && error && (
                 <div style={{ background: 'var(--color-danger-bg)', border: '1px solid var(--border-critical)', borderRadius: 6, padding: '10px 14px', fontFamily: 'var(--font-terminal)', fontSize: '0.72rem', color: 'var(--color-danger)' }}>
                     {error}
                 </div>
             )}
 
             {/* ── Search view ──────────────────────────────────────────────── */}
-            {!viewingStudent && !loadingRecord && (
+            {viewTab === 'transcript' && !viewingStudent && !loadingRecord && (
                 <>
+                    <AtRiskPanel
+                        students={atRiskStudents}
+                        loading={loadingAtRisk}
+                        onViewStudent={openStudentRecord}
+                        searchResults={results}
+                    />
                     <CyberPanel title="Student Lookup" subtitle="Search by student email or account ID">
                         <form onSubmit={handleSearch} style={{ display: 'flex', gap: 10 }}>
                             <input
@@ -206,7 +502,7 @@ const AdminGrading = () => {
             )}
 
             {/* ── Loading skeleton ─────────────────────────────────────────── */}
-            {loadingRecord && (
+            {viewTab === 'transcript' && loadingRecord && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     <Skeleton.Card />
                     <Skeleton.Table rows={5} cols={5} />
@@ -214,7 +510,7 @@ const AdminGrading = () => {
             )}
 
             {/* ── Transcript view ──────────────────────────────────────────── */}
-            {viewingStudent && !loadingRecord && (
+            {viewTab === 'transcript' && viewingStudent && !loadingRecord && (
                 <>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

@@ -94,6 +94,16 @@ export const adminApi = {
         return res.data;
     },
 
+    provisionSecretary: async (data) => {
+        const res = await apiClient.post('/authentication/provision-secretary', {
+            email_address: data.email_address,
+            plain_text_password: data.plain_text_password,
+            first_name: data.first_name,
+            last_name: data.last_name,
+        });
+        return res.data;
+    },
+
     setUserActiveStatus: async (accountId, isActive) => {
         const res = await apiClient.patch(`/admin/users/${accountId}/status`, { is_active: isActive });
         return res.data;
@@ -110,9 +120,9 @@ export const adminApi = {
         return res.data;
     },
 
-    rerouteTicket: async (ticketId, correctCategory, note = null) => {
+    rerouteTicket: async (ticketId, department, note = null) => {
         const res = await apiClient.patch(`/support/${ticketId}/reroute`, {
-            correct_category: correctCategory,
+            department,
             resolution_note: note,
         });
         return res.data;
@@ -134,18 +144,7 @@ export const adminApi = {
         return res.data;
     },
 
-    // ── AI Telemetry 
-    fetchTelemetry: async () => {
-        const res = await apiClient.get('/support/telemetry');
-        return res.data;
-    },
-
-    retrainTriageModel: async () => {
-        const res = await apiClient.post('/support/retrain-model');
-        return res.data;
-    },
-
-    // ── Omni Search 
+    // ── Omni Search
     omniSearch: async (query) => {
         const res = await apiClient.get(`/admin/search?q=${encodeURIComponent(query)}`);
         return res.data;
@@ -167,6 +166,104 @@ export const adminApi = {
 
     fetchAuditSummary: async () => {
         const res = await apiClient.get('/audit/summary');
+        return res.data;
+    },
+
+    // SE-08 — AI Audit Narratives
+    processNarratives: async () => {
+        const res = await apiClient.post('/audit/process-narratives');
+        return res.data;
+    },
+
+    acknowledgeNarrative: async (eventId) => {
+        const res = await apiClient.post(`/audit/events/${eventId}/acknowledge-narrative`);
+        return res.data;
+    },
+
+    // ── SE-03 Prerequisite Graph
+    fetchPrereqGraph: async () => {
+        const res = await apiClient.get('/enrollment/curriculum/prereq-graph');
+        return res.data;
+    },
+
+    // ── SE-02 Faculty Matching
+    fetchFacultyRecommendations: async (subjectId) => {
+        const res = await apiClient.get(`/admin/faculty/match?subject_id=${subjectId}`);
+        return res.data;
+    },
+
+    updateFacultySpecialization: async (accountId, tags) => {
+        const res = await apiClient.patch(`/admin/faculty/${accountId}/specialization`, { specialization_tags: tags });
+        return res.data;
+    },
+
+    // ── SE-01 Enrollment Analytics
+    fetchEnrollmentForecast: async () => {
+        const res = await apiClient.get('/analytics/admin/enrollment-forecast');
+        return res.data;
+    },
+
+    runForecast: async () => {
+        const res = await apiClient.post('/analytics/admin/run-forecast');
+        return res.data;
+    },
+
+    fetchDemandAlerts: async () => {
+        const res = await apiClient.get('/analytics/admin/demand-alerts');
+        return res.data;
+    },
+
+    dismissDemandAlert: async (alertId) => {
+        const res = await apiClient.post(`/analytics/admin/demand-alerts/${alertId}/dismiss`);
+        return res.data;
+    },
+
+    applyAnalyticsTables: async () => {
+        const res = await apiClient.post('/analytics/admin/apply-tables');
+        return res.data;
+    },
+
+    // ── Announcements
+    createAnnouncement: async (data) => {
+        const res = await apiClient.post('/support/announcements', data);
+        return res.data;
+    },
+
+    deleteAnnouncement: async (id) => {
+        const res = await apiClient.delete(`/support/announcements/${id}`);
+        return res.data;
+    },
+
+    // ── SE-04 At-Risk Intelligence
+    fetchAtRiskStudents: async (minScore = 40) => {
+        const res = await apiClient.get(`/admin/at-risk-students?min_score=${minScore}`);
+        return res.data;
+    },
+
+    // ── Student Records (read-only roster)
+    fetchStudentRecords: async ({ search, course, year_level, skip = 0, limit = 200 } = {}) => {
+        const params = new URLSearchParams({ skip, limit });
+        if (search)     params.append('search',     search);
+        if (course)     params.append('course',     course);
+        if (year_level) params.append('year_level', year_level);
+        const res = await apiClient.get(`/enrollment/students?${params.toString()}`);
+        return res.data;
+    },
+
+    // ── Programs — dynamic list of distinct course codes in the DB
+    fetchPrograms: async () => {
+        const res = await apiClient.get('/enrollment/courses');
+        return res.data; // string[]
+    },
+
+    // ── INC Completion Posting Queue
+    fetchINCPostingQueue: async () => {
+        const res = await apiClient.get('/secretariat/completion/queue?state_filter=AWAITING_ADMIN_POSTING');
+        return res.data;
+    },
+
+    advanceINCCompletion: async (requestId, payload) => {
+        const res = await apiClient.patch(`/secretariat/completion/${requestId}/advance`, payload);
         return res.data;
     },
 };

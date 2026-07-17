@@ -1,0 +1,563 @@
+/* ── Preserved keyframes ─────────────────────────────────────────────────── */
+@keyframes scanLine {
+  0% {
+    top: 8%;
+  }
+
+  50% {
+    top: 86%;
+  }
+
+  100% {
+    top: 8%;
+  }
+}
+
+@keyframes blinkText {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.15;
+  }
+}
+
+@keyframes dataLinePulse {
+
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes extractUp {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes arrowPulse {
+
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: translateX(0);
+  }
+
+  50% {
+    opacity: 0.8;
+    transform: translateX(3px);
+  }
+}
+
+@keyframes balanceUp {
+
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+
+  50% {
+    transform: scaleY(1.4);
+  }
+}
+
+@keyframes balanceDown {
+
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+
+  50% {
+    transform: scaleY(0.6);
+  }
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes heroReveal {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes spinCW {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spinCCW {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes liquidShimmer {
+
+  0%,
+  100% {
+    transform: translateX(-120%) skewX(-8deg);
+    opacity: 0;
+  }
+
+  15% {
+    opacity: 1;
+  }
+
+  85% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateX(220%) skewX(-8deg);
+    opacity: 0;
+  }
+}
+
+@keyframes glassBreath {
+
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04),
+                inset 0 1px 0 rgba(255,255,255,0.90), inset 0 -1px 0 rgba(163,127,33,0.06);
+  }
+
+  50% {
+    opacity: 0.97;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03),
+                inset 0 1px 0 rgba(255,255,255,0.80), inset 0 -1px 0 rgba(163,127,33,0.04);
+  }
+}
+
+@keyframes liquidRipple {
+  0% {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: .45;
+    border-radius: 50%;
+  }
+
+  55% {
+    opacity: .18;
+    border-radius: 48% / 36%;
+  }
+
+  100% {
+    transform: translate(-50%, -50%) scale(3.2);
+    opacity: 0;
+    border-radius: 44% / 30%;
+  }
+}
+
+/* ── New section keyframes (GPU-safe: transform + opacity only) ───────────── */
+@keyframes nodePulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.82;
+  }
+
+  50% {
+    transform: scale(1.14);
+    opacity: 1;
+  }
+}
+
+@keyframes radarSweep {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes portalRing {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes portalRingCCW {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes portalPulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+
+  50% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+}
+
+@keyframes vaultRingPulse {
+
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 0.65;
+  }
+
+  50% {
+    transform: scale(1.025) rotate(2deg);
+    opacity: 1;
+  }
+}
+
+@keyframes commandBlink {
+
+  0%,
+  48% {
+    opacity: 1;
+  }
+
+  50%,
+  98% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleOscillate {
+  from {
+    transform: rotate(-10deg);
+  }
+
+  to {
+    transform: rotate(10deg);
+  }
+}
+
+/* ── Preserved utility classes ───────────────────────────────────────────── */
+.modal-close-btn:hover {
+  background: rgba(26, 24, 20, 0.06) !important;
+  color: var(--glass-text-primary) !important;
+}
+
+.liquid-nav-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.liquid-nav-btn::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 140%;
+  padding-bottom: 100%;
+  transform: translate(-50%, -50%) scale(0);
+  background: radial-gradient(ellipse at center,
+      rgba(186, 151, 49, 0.20) 0%,
+      rgba(186, 151, 49, 0.06) 48%,
+      transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.liquid-nav-btn:hover::before {
+  animation: liquidRipple 0.6s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+
+.liquid-nav-btn:hover {
+  background: rgba(163, 127, 33, 0.10) !important;
+  color: #1A1814 !important;
+}
+
+/* ── Card hover (journey steps, vault layers) ────────────────────────────── */
+.feature-card {
+  transition: border-color 0.3s ease, transform 0.3s ease,
+              box-shadow 0.3s ease !important;
+}
+
+.feature-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 60%
+  );
+  transform: translateX(-100%);
+  transition: transform 0.55s cubic-bezier(0.22, 0.61, 0.36, 1);
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.feature-card:hover::after {
+  transform: translateX(100%);
+}
+
+.feature-card:hover {
+  border-color: rgba(186, 151, 49, 0.42) !important;
+  transform: translateY(-3px) !important;
+  box-shadow: 0 12px 40px rgba(163, 127, 33, 0.13) !important;
+}
+
+/* ── Glass input focus ring ──────────────────────────────────────────────── */
+.glass-input:focus {
+  outline: none;
+  border-color: rgba(186, 151, 49, 0.58) !important;
+  box-shadow:
+    0 0 0 3px rgba(186, 151, 49, 0.13),
+    0 0 0 1px rgba(186, 151, 49, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.60);
+  transition: border-color 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Nav shimmer — animated only when modal is closed ───────────────────── */
+.nav-shimmer-active {
+  animation: liquidShimmer 7s ease-in-out infinite;
+}
+
+/* ── SVG node transform helper ───────────────────────────────────────────── */
+.holo-node {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* ── AI Command Center — radar ring pulse (scale + opacity, no rotation) ─── */
+@keyframes hubRadarPulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.32;
+  }
+
+  100% {
+    transform: scale(1.20);
+    opacity: 0;
+  }
+}
+
+.hub-radar-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* ── Redesign additions (Command Center sweep · Ecosystem core ingest) ─────── */
+@keyframes cmdScan {
+  from {
+    transform: translateX(-30%);
+    opacity: 0;
+  }
+
+  20% {
+    opacity: 1;
+  }
+
+  to {
+    transform: translateX(30%);
+    opacity: 0;
+  }
+}
+
+@keyframes ecoIngest {
+  from {
+    transform: scale(0.4);
+    opacity: 0.7;
+  }
+
+  to {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+/* Honor reduced-motion globally for any decorative loop that slips through */
+@media (prefers-reduced-motion: reduce) {
+
+  .hub-radar-ring,
+  .holo-node {
+    animation: none !important;
+  }
+}
+
+/* ── Landing section glass panels ────────────────────────────────────────────
+   Light glass panels — the warm alabaster gradient shows through and bleeds at
+   each edge via mask-image, eliminating hard section cuts.
+   ─────────────────────────────────────────────────────────────────────────── */
+.lp-section {
+  position: relative;
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(24px) saturate(1.5);
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent   0px,
+    black         96px,
+    black         calc(100% - 96px),
+    transparent   100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent   0px,
+    black         96px,
+    black         calc(100% - 96px),
+    transparent   100%
+  );
+}
+
+/* Mobile: lighter blur */
+@media (max-width: 768px) {
+  .lp-section {
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(14px) saturate(1.4);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  }
+}
+
+/* Reduced motion: skip blur */
+@media (prefers-reduced-motion: reduce) {
+  .lp-section {
+    background: rgba(250, 248, 245, 0.98) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+  }
+}
+
+/* ── Glass feature cards — light premium glass with gold border ───────────── */
+.feature-card {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.90),
+    0 4px 24px rgba(0, 0, 0, 0.08),
+    0 1px 4px rgba(0, 0, 0, 0.04),
+    0 0 0 1px rgba(163, 127, 33, 0.10) !important;
+  isolation: isolate;
+  transition: border-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease !important;
+}
+
+/* Specular top-left highlight — warm alabaster */
+.feature-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    radial-gradient(ellipse 70% 45% at 12% 6%, rgba(255, 248, 220, 0.50) 0%, transparent 62%);
+  z-index: 1;
+}
+
+/* Sweep shimmer on hover */
+.feature-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 38%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 62%
+  );
+  transform: translateX(-120%);
+  transition: transform 0.55s cubic-bezier(0.22, 0.61, 0.36, 1);
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 2;
+}
+
+.feature-card:hover::after {
+  transform: translateX(120%);
+}
+
+.feature-card:hover {
+  border-color: rgba(163, 127, 33, 0.38) !important;
+  transform: translateY(-3px) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 12px 40px rgba(0, 0, 0, 0.12),
+    0 4px 12px rgba(163, 127, 33, 0.08),
+    0 0 0 1px rgba(163, 127, 33, 0.18) !important;
+}

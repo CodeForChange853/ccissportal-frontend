@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import AnomalyBadge from './AnomalyBadge';
+import { adminApi } from '../../api/adminApi';
 
 const EVENT_COLOR = {
     LOGIN_FAILED: 'var(--neon-red)',
@@ -36,7 +37,91 @@ const ExpandedPayload = ({ payload }) => {
     );
 };
 
-const AuditTable = ({ events = [], loading = false }) => {
+const NARRATIVE_STATUS_LABEL = {
+    NONE:       null,
+    PENDING:    { label: 'NARRATIVE QUEUED',    color: 'var(--text-muted)' },
+    GENERATING: { label: 'GENERATING...',        color: 'var(--neon-cyan)' },
+    GENERATED:  { label: 'AI ANALYSIS READY',   color: 'var(--neon-green)' },
+    FAILED:     { label: 'NARRATIVE FAILED',     color: 'var(--neon-red)' },
+};
+
+const NarrativePanel = ({ event, onAcknowledged }) => {
+    const [acking, setAcking] = useState(false);
+    const meta = NARRATIVE_STATUS_LABEL[event.narrative_status] || null;
+    if (!meta) return null;
+
+    const handleAck = async () => {
+        setAcking(true);
+        try {
+            await adminApi.acknowledgeNarrative(event.event_id);
+            onAcknowledged && onAcknowledged(event.event_id);
+        } catch (_) { /* ignore */ }
+        setAcking(false);
+    };
+
+    return (
+        <div style={{
+            marginTop: 8, padding: '10px 14px',
+            background: 'rgba(0,0,0,0.35)',
+            border: `1px solid ${meta.color}33`,
+            borderRadius: 6,
+        }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <span style={{
+                    fontFamily: 'var(--font-terminal)', fontSize: '0.52rem',
+                    letterSpacing: '0.14em', color: meta.color,
+                }}>
+                    ◈ {meta.label}
+                </span>
+                {event.narrative_status === 'GENERATED' && !event.narrative_acknowledged_at && (
+                    <button
+                        onClick={handleAck}
+                        disabled={acking}
+                        style={{
+                            marginLeft: 'auto',
+                            fontFamily: 'var(--font-terminal)', fontSize: '0.50rem',
+                            letterSpacing: '0.10em', textTransform: 'uppercase',
+                            background: 'none', border: '1px solid var(--neon-cyan)',
+                            color: 'var(--neon-cyan)', borderRadius: 4,
+                            padding: '2px 8px', cursor: 'pointer', opacity: acking ? 0.5 : 1,
+                        }}
+                    >
+                        {acking ? 'MARKING...' : 'ACKNOWLEDGE'}
+                    </button>
+                )}
+                {event.narrative_acknowledged_at && (
+                    <span style={{
+                        marginLeft: 'auto',
+                        fontFamily: 'var(--font-terminal)', fontSize: '0.50rem',
+                        letterSpacing: '0.10em', color: 'var(--text-muted)',
+                    }}>
+                        ✓ ACKNOWLEDGED
+                    </span>
+                )}
+            </div>
+
+            {event.narrative_status === 'GENERATED' && event.anomaly_narrative && (
+                <p style={{
+                    fontFamily: 'var(--font-code)', fontSize: '0.68rem',
+                    color: 'var(--text-primary)', lineHeight: 1.7,
+                    margin: 0,
+                }}>
+                    {event.anomaly_narrative}
+                </p>
+            )}
+            {(event.narrative_status === 'PENDING' || event.narrative_status === 'GENERATING') && (
+                <p style={{
+                    fontFamily: 'var(--font-terminal)', fontSize: '0.62rem',
+                    color: 'var(--text-muted)', margin: 0, letterSpacing: '0.06em',
+                }}>
+                    This event is flagged for AI analysis. Narratives are generated automatically every 5 minutes or via the &quot;Generate Narratives&quot; button.
+                </p>
+            )}
+        </div>
+    );
+};
+
+const AuditTable = ({ events = [], loading = false, onEventUpdated }) => {
     const [expanded, setExpanded] = useState(null);
 
     if (loading) return (
@@ -114,10 +199,16 @@ const AuditTable = ({ events = [], loading = false }) => {
                             </span>
                         </div>
 
-                        {/* Expanded payload */}
+                        {/* Expanded section: payload + narrative */}
                         {isExpanded && (
-                            <div style={{ padding: '0 12px 12px' }}>
+                            <div style={{ padding: '0 12px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                                 <ExpandedPayload payload={ev.payload} />
+                                {ev.anomaly_score >= 35 && (
+                                    <NarrativePanel
+                                        event={ev}
+                                        onAcknowledged={(id) => onEventUpdated && onEventUpdated(id)}
+                                    />
+                                )}
                             </div>
                         )}
                     </div>

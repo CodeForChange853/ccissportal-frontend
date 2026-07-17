@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../../context/AuthContext';
+import { useAuth } from '../../../auth/AuthContext';
 import Toast from '../../../components/ui/Toast';
 import { studentApi } from '../api/studentApi';
 import GWABlock, { computeGWA, gwaLabel } from '../components/GWABlock';
@@ -13,12 +13,44 @@ import {
     OverviewIcon, CurriculumIcon, GradebookIcon,
     AdmissionsIcon, ShieldIcon, SupportIcon, LogoutIcon,
 } from '../../../components/icons';
+import { useNotificationPoller } from '../../../hooks/useNotificationPoller';
+import OnboardingWizard from '../../../components/ui/OnboardingWizard';
 import {
     Chart as ChartJS, CategoryScale, LinearScale,
     PointElement, LineElement, Filler, Tooltip,
 } from 'chart.js';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip);
+
+const STUDENT_ONBOARDING_STEPS = [
+    {
+        icon: '🎓',
+        title: 'Welcome, {name}!',
+        subtitle: 'NexEnroll Student Portal',
+        body: 'Everything you need for your academic journey is right here — enroll in subjects, track grades, upload your COR, and get AI-powered support.',
+    },
+    {
+        icon: '✨',
+        title: 'Smart Enrollment',
+        subtitle: 'Powered by AI',
+        body: 'The Enroll tab uses AI to recommend subjects based on your prerequisites and academic standing. Drag subjects into the schedule builder to create your load.',
+        highlight: 'Enroll tab → drag & drop',
+    },
+    {
+        icon: '📊',
+        title: 'Grades & Support',
+        subtitle: 'Track your progress',
+        body: 'View your academic records by semester in the Grades tab. The Support Assistant automatically routes your concern to the right office.',
+        highlight: 'Grades · Support tabs',
+    },
+    {
+        icon: '🚀',
+        title: "You're all set!",
+        subtitle: 'Ready to begin',
+        body: 'Start by checking your overview or heading to Enroll. Your academic advisor is just a support ticket away if you need help.',
+        cta: 'Start Exploring',
+    },
+];
 
 // ── Tab config split: primary (bottom nav) + overflow (settings sheet)
 const PRIMARY_TABS = [
@@ -336,6 +368,173 @@ const GearIcon = () => (
     </svg>
 );
 
+// ── Clearance status pill
+const ClearancePill = ({ status }) => {
+    const cfg = {
+        CLEARED:       { color: 'var(--student-green)',    bg: 'var(--student-green-dim)',  label: 'Cleared' },
+        VERIFIED:      { color: 'var(--student-green)',    bg: 'var(--student-green-dim)',  label: 'Verified' },
+        PENDING:       { color: 'var(--student-gold)',     bg: 'var(--student-gold-dim)',   label: 'Pending' },
+        NOT_SUBMITTED: { color: 'var(--student-gold)',     bg: 'var(--student-gold-dim)',   label: 'Not Submitted' },
+        UNCLEARED:     { color: 'var(--student-red)',      bg: 'rgba(192,57,43,0.12)',      label: 'Uncleared' },
+        REJECTED:      { color: 'var(--student-red)',      bg: 'rgba(192,57,43,0.12)',      label: 'Rejected' },
+    }[status] ?? { color: 'rgba(245,240,232,0.3)', bg: 'rgba(245,240,232,0.05)', label: status ?? '—' };
+
+    return (
+        <span
+            className="text-[10px] font-bold px-2.5 py-0.5 rounded-full"
+            style={{ color: cfg.color, background: cfg.bg, fontFamily: 'var(--student-font-mono)', letterSpacing: '0.04em' }}
+        >
+            {cfg.label}
+        </span>
+    );
+};
+
+// ── Inline clearance block (home tab)
+const ClearanceBlock = ({ profile, ojtClearance, equipClearance }) => {
+    const enrollStatus = profile?.clearance?.status ?? 'PENDING';
+
+    const rows = [
+        {
+            icon: '📋',
+            label: 'Enrollment Clearance',
+            status: enrollStatus,
+            detail: enrollStatus === 'CLEARED' ? 'No outstanding enrollment holds' : 'Enrollment request pending review',
+        },
+        {
+            icon: '🏢',
+            label: 'OJT Clearance',
+            status: ojtClearance?.ojt_clearance_status ?? null,
+            detail: ojtClearance
+                ? ojtClearance.ojt_clearance_status === 'VERIFIED'
+                    ? 'OJT documents verified'
+                    : ojtClearance.ojt_clearance_status === 'NOT_SUBMITTED'
+                    ? 'No OJT documents submitted yet'
+                    : ojtClearance.ojt_clearance_status === 'REJECTED'
+                    ? 'OJT documents rejected — resubmit required'
+                    : 'OJT documents under review'
+                : 'Loading…',
+        },
+        {
+            icon: '🖥️',
+            label: 'Equipment Clearance',
+            status: equipClearance?.equipment_clearance_status ?? null,
+            detail: equipClearance
+                ? equipClearance.equipment_clearance_status === 'CLEARED'
+                    ? 'No unreturned equipment'
+                    : `${equipClearance.active_checkouts} active, ${equipClearance.overdue_checkouts} overdue checkout${equipClearance.overdue_checkouts !== 1 ? 's' : ''}`
+                : 'Loading…',
+            badge: equipClearance?.overdue_checkouts > 0
+                ? `${equipClearance.overdue_checkouts} overdue`
+                : null,
+        },
+    ];
+
+    return (
+        <div
+            className="rounded-2xl p-5"
+            style={{ background: 'var(--student-black-3)', border: '1px solid rgba(201,168,76,0.08)' }}
+        >
+            <p
+                className="text-[10px] uppercase tracking-widest font-bold mb-4"
+                style={{ color: 'var(--student-white-dim)', fontFamily: 'var(--student-font-mono)' }}
+            >
+                Clearance Status
+            </p>
+            <div className="space-y-3">
+                {rows.map(row => (
+                    <div
+                        key={row.label}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+                        style={{ background: 'var(--student-black-4)', border: '1px solid rgba(201,168,76,0.06)' }}
+                    >
+                        <span className="text-base flex-shrink-0">{row.icon}</span>
+                        <div className="flex-1 min-w-0">
+                            <p
+                                className="text-xs font-semibold leading-none mb-1"
+                                style={{ color: 'var(--student-white)', fontFamily: 'var(--student-font-body)' }}
+                            >
+                                {row.label}
+                            </p>
+                            <p
+                                className="text-[10px] leading-none"
+                                style={{ color: 'var(--student-white-dim)', fontFamily: 'var(--student-font-mono)' }}
+                            >
+                                {row.detail}
+                                {row.badge && (
+                                    <span
+                                        className="ml-2 px-1.5 py-0.5 rounded-full text-[9px] font-bold"
+                                        style={{ background: 'rgba(192,57,43,0.15)', color: 'var(--student-red)' }}
+                                    >
+                                        {row.badge}
+                                    </span>
+                                )}
+                            </p>
+                        </div>
+                        {row.status
+                            ? <ClearancePill status={row.status} />
+                            : <span className="text-[10px]" style={{ color: 'rgba(245,240,232,0.2)', fontFamily: 'var(--student-font-mono)' }}>—</span>
+                        }
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+// ── Enrollment status banner (persistent, dismissable)
+const EnrollmentStatusBanner = ({ status, onDismiss }) => {
+    const isApproved = status === 'APPROVED';
+    return (
+        <div
+            className="rounded-2xl p-4 flex items-start gap-4"
+            style={{
+                background: isApproved ? 'rgba(39,174,96,0.08)' : 'rgba(192,57,43,0.08)',
+                border: `1px solid ${isApproved ? 'rgba(39,174,96,0.28)' : 'rgba(192,57,43,0.28)'}`,
+                position: 'relative',
+            }}
+        >
+            {/* Left accent stripe */}
+            <div style={{
+                position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, borderRadius: '12px 0 0 12px',
+                background: isApproved ? 'var(--student-green)' : 'var(--student-red)',
+            }} />
+            <span className="text-2xl flex-shrink-0" style={{ marginLeft: 4 }}>
+                {isApproved ? '🎉' : '⚠️'}
+            </span>
+            <div className="flex-1 min-w-0">
+                <p
+                    className="text-[10px] uppercase tracking-widest font-bold mb-1"
+                    style={{ color: isApproved ? 'var(--student-green)' : 'var(--student-red)', fontFamily: 'var(--student-font-mono)' }}
+                >
+                    Enrollment {isApproved ? 'Approved' : 'Not Approved'}
+                </p>
+                <p
+                    className="text-sm font-semibold mb-0.5"
+                    style={{ color: 'var(--student-white)', fontFamily: 'var(--student-font-display)' }}
+                >
+                    {isApproved
+                        ? 'Your enrollment has been approved!'
+                        : 'Your enrollment was not approved.'}
+                </p>
+                <p
+                    className="text-xs"
+                    style={{ color: 'var(--student-white-dim)', fontFamily: 'var(--student-font-body)' }}
+                >
+                    {isApproved
+                        ? 'Check the Enrollment Status tab for your confirmed subjects.'
+                        : 'See the Enrollment Status tab for reviewer notes, then resubmit.'}
+                </p>
+            </div>
+            <button
+                onClick={onDismiss}
+                className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg text-xs transition-colors"
+                style={{ background: 'rgba(255,255,255,0.07)', color: 'var(--student-white-dim)' }}
+                aria-label="Dismiss notification"
+            >✕</button>
+        </div>
+    );
+};
+
 // ── Main dashboard
 const StudentDashboard = () => {
     const { user, logout } = useAuth();
@@ -346,15 +545,64 @@ const StudentDashboard = () => {
     const [schedule, setSchedule] = useState([]);
     const [enrollment, setEnrollment] = useState([]);
     const [academicStanding, setAcademicStanding] = useState(null);
+    const [atRisk, setAtRisk] = useState(null);
     const [tab, setTab] = useState('home');
     const [toast, setToast] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [clearanceModal, setClearanceModal] = useState(false);
+    const [ojtClearance, setOjtClearance] = useState(null);
+    const [equipClearance, setEquipClearance] = useState(null);
+    const [enrollmentBanner, setEnrollmentBanner] = useState(null); // { status, isNew }
     const [settingsOpen, setSettingsOpen] = useState(false);
 
     const [navPref, setNavPref] = useState(() => localStorage.getItem(NAV_PREF_KEY) || 'bottom');
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [showOnboarding, setShowOnboarding] = useState(false);
     const scrollRef = useRef(null);
+
+    // ── Notification bell state ───────────────────────────────────────────────
+    const [notifications, setNotifications] = useState([]);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const [bellOpen, setBellOpen] = useState(false);
+    const bellRef = useRef(null);
+
+    const refreshNotifications = useCallback(async () => {
+        try {
+            const data = await studentApi.fetchNotifications();
+            setNotifications(data.notifications ?? []);
+            setUnreadCount(data.unread_count ?? 0);
+        } catch { /* silent */ }
+    }, []);
+
+    useEffect(() => { refreshNotifications(); }, []);
+
+    const handleMarkRead = async (id) => {
+        setNotifications(prev => prev.map(n => n.notification_id === id ? { ...n, is_read: true } : n));
+        setUnreadCount(prev => Math.max(0, prev - 1));
+        try { await studentApi.markNotificationRead(id); } catch { /* silent */ }
+    };
+
+    const handleMarkAllRead = async () => {
+        setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+        setUnreadCount(0);
+        try { await studentApi.markAllNotificationsRead(); } catch { /* silent */ }
+    };
+
+    useNotificationPoller({
+        onNewNotification: (notif) => {
+            showToast(`${notif.title}: ${notif.message}`, 'success');
+            refreshNotifications();
+        },
+    });
+
+    // Close bell dropdown on outside click
+    useEffect(() => {
+        if (!bellOpen) return;
+        const handler = (e) => {
+            if (bellRef.current && !bellRef.current.contains(e.target)) setBellOpen(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [bellOpen]);
 
     useEffect(() => {
         scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
@@ -380,12 +628,35 @@ const StudentDashboard = () => {
         try { setProfile(await studentApi.fetchProfile()); } catch { showToast('Could not load profile.', 'error'); }
         try { setGrades(await studentApi.fetchGrades()); } catch { /* silent */ }
         try { setSchedule(await studentApi.fetchSchedule()); } catch { /* silent */ }
-        try { setEnrollment(await studentApi.fetchEnrollmentStatus()); } catch { /* silent */ }
+        try {
+            const enrollData = await studentApi.fetchEnrollmentStatus();
+            setEnrollment(enrollData);
+            // Compute enrollment banner from most recent request
+            const latest = enrollData?.[0];
+            if (latest && (latest.review_status === 'APPROVED' || latest.review_status === 'REJECTED')) {
+                const seenKey = `nexenroll_enrollment_seen_${user?.id}`;
+                const seen = localStorage.getItem(seenKey);
+                const bannerKey = `${latest.request_id}_${latest.review_status}`;
+                if (seen !== bannerKey) {
+                    setEnrollmentBanner({ status: latest.review_status, bannerKey });
+                }
+            }
+        } catch { /* silent */ }
         try { setAcademicStanding(await studentApi.fetchAcademicStanding()); } catch { /* silent */ }
+        try { setAtRisk(await studentApi.fetchAtRisk()); } catch { /* silent */ }
+        try { setOjtClearance(await studentApi.fetchMyOJTClearance()); } catch { /* silent */ }
+        try { setEquipClearance(await studentApi.fetchMyEquipmentClearance()); } catch { /* silent */ }
         setLoading(false);
     };
 
     useEffect(() => { fetchAll(); }, []);
+
+    useEffect(() => {
+        if (!loading && profile && user?.id) {
+            const key = `nexenroll_onboarded_student_${user.id}`;
+            if (!localStorage.getItem(key)) setShowOnboarding(true);
+        }
+    }, [loading, profile]);
 
     const gwa = useMemo(() => computeGWA(grades), [grades]);
     const gwaMeta = useMemo(() => gwaLabel(gwa), [gwa]);
@@ -459,6 +730,18 @@ const StudentDashboard = () => {
             />
 
             {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+
+            {showOnboarding && (
+                <OnboardingWizard
+                    steps={STUDENT_ONBOARDING_STEPS}
+                    variant="student"
+                    userName={profile?.name}
+                    onComplete={() => {
+                        localStorage.setItem(`nexenroll_onboarded_student_${user.id}`, '1');
+                        setShowOnboarding(false);
+                    }}
+                />
+            )}
 
             {useSidebar && (
                 <MobileSidebar
@@ -570,15 +853,130 @@ const StudentDashboard = () => {
                             </div>
                         </div>
 
-                        {/* Avatar */}
-                        <div
-                            className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm flex-shrink-0"
-                            style={{
-                                background: 'linear-gradient(135deg, var(--student-gold), var(--student-gold-2))',
-                                color: 'var(--student-black)',
-                                fontFamily: 'var(--student-font-display)',
-                            }}
-                        >{profile.name?.charAt(0).toUpperCase()}</div>
+                        {/* Notification Bell + Avatar */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            {/* Bell */}
+                            <div ref={bellRef} style={{ position: 'relative' }}>
+                                <button
+                                    id="notification-bell-btn"
+                                    onClick={() => setBellOpen(v => !v)}
+                                    style={{
+                                        position: 'relative', width: 36, height: 36,
+                                        borderRadius: 10, border: '1px solid rgba(201,168,76,0.15)',
+                                        background: bellOpen ? 'var(--student-gold-dim)' : 'var(--student-black-4)',
+                                        color: 'var(--student-gold)', cursor: 'pointer',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        transition: 'all 0.15s',
+                                    }}
+                                    aria-label="Notifications"
+                                >
+                                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" style={{ width: 17, height: 17 }}>
+                                        <path d="M10 2a6 6 0 0 1 6 6c0 3 1.5 4 2 5H2c.5-1 2-2 2-5a6 6 0 0 1 6-6z" />
+                                        <path d="M8.5 17a1.5 1.5 0 0 0 3 0" />
+                                    </svg>
+                                    {unreadCount > 0 && (
+                                        <span style={{
+                                            position: 'absolute', top: -4, right: -4,
+                                            minWidth: 16, height: 16, borderRadius: 999,
+                                            background: 'var(--student-red)',
+                                            color: '#fff', fontSize: 9, fontWeight: 800,
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            padding: '0 3px', fontFamily: 'var(--student-font-mono)',
+                                            border: '2px solid var(--student-black)',
+                                        }}>
+                                            {unreadCount > 9 ? '9+' : unreadCount}
+                                        </span>
+                                    )}
+                                </button>
+
+                                {/* Dropdown */}
+                                {bellOpen && (
+                                    <div id="notification-dropdown" style={{
+                                        position: 'absolute', top: 44, right: 0,
+                                        width: 320, maxHeight: 420, overflowY: 'auto',
+                                        background: 'var(--student-black-2)',
+                                        border: '1px solid rgba(201,168,76,0.15)',
+                                        borderRadius: 14, boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
+                                        zIndex: 100,
+                                    }}>
+                                        {/* Header */}
+                                        <div style={{
+                                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                            padding: '12px 16px 10px',
+                                            borderBottom: '1px solid rgba(201,168,76,0.08)',
+                                        }}>
+                                            <span style={{ fontFamily: 'var(--student-font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: 'var(--student-white-dim)', textTransform: 'uppercase' }}>
+                                                Notifications
+                                            </span>
+                                            {unreadCount > 0 && (
+                                                <button
+                                                    id="mark-all-read-btn"
+                                                    onClick={handleMarkAllRead}
+                                                    style={{
+                                                        background: 'transparent', border: 'none', cursor: 'pointer',
+                                                        fontFamily: 'var(--student-font-mono)', fontSize: 9, fontWeight: 700,
+                                                        color: 'var(--student-gold)', letterSpacing: '0.08em', textTransform: 'uppercase',
+                                                    }}
+                                                >
+                                                    Mark all read
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {/* Items */}
+                                        {notifications.length === 0 ? (
+                                            <div style={{ padding: '24px 16px', textAlign: 'center', fontFamily: 'var(--student-font-mono)', fontSize: 11, color: 'var(--student-white-dim)' }}>
+                                                No notifications yet
+                                            </div>
+                                        ) : notifications.slice(0, 10).map(n => (
+                                            <button
+                                                key={n.notification_id}
+                                                onClick={() => handleMarkRead(n.notification_id)}
+                                                style={{
+                                                    width: '100%', textAlign: 'left', cursor: 'pointer',
+                                                    display: 'flex', alignItems: 'flex-start', gap: 10,
+                                                    padding: '11px 16px',
+                                                    background: n.is_read ? 'transparent' : 'rgba(201,168,76,0.04)',
+                                                    border: 'none',
+                                                    borderBottom: '1px solid rgba(255,255,255,0.04)',
+                                                    transition: 'background 0.12s',
+                                                }}
+                                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(201,168,76,0.07)'}
+                                                onMouseLeave={e => e.currentTarget.style.background = n.is_read ? 'transparent' : 'rgba(201,168,76,0.04)'}
+                                            >
+                                                {/* Unread dot */}
+                                                <span style={{
+                                                    flexShrink: 0, marginTop: 5,
+                                                    width: 6, height: 6, borderRadius: 999,
+                                                    background: n.is_read ? 'transparent' : 'var(--student-gold)',
+                                                }} />
+                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                    <p style={{ margin: 0, fontFamily: 'var(--student-font-body)', fontSize: 12, fontWeight: n.is_read ? 500 : 700, color: 'var(--student-white)', lineHeight: 1.3 }}>
+                                                        {n.title}
+                                                    </p>
+                                                    <p style={{ margin: '2px 0 0', fontFamily: 'var(--student-font-body)', fontSize: 11, color: 'var(--student-white-dim)', lineHeight: 1.4 }}>
+                                                        {n.message}
+                                                    </p>
+                                                    <p style={{ margin: '4px 0 0', fontFamily: 'var(--student-font-mono)', fontSize: 9, color: 'rgba(201,168,76,0.5)', letterSpacing: '0.05em' }}>
+                                                        {n.age}
+                                                    </p>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Avatar */}
+                            <div
+                                className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm flex-shrink-0"
+                                style={{
+                                    background: 'linear-gradient(135deg, var(--student-gold), var(--student-gold-2))',
+                                    color: 'var(--student-black)',
+                                    fontFamily: 'var(--student-font-display)',
+                                }}
+                            >{profile.name?.charAt(0).toUpperCase()}</div>
+                        </div>
                     </div>
 
                     {/* Scrollable content */}
@@ -588,7 +986,83 @@ const StudentDashboard = () => {
                             {/* HOME */}
                             {tab === 'home' && (
                                 <div className="space-y-5">
+                                    {enrollmentBanner && (
+                                        <EnrollmentStatusBanner
+                                            status={enrollmentBanner.status}
+                                            onDismiss={() => {
+                                                localStorage.setItem(`nexenroll_enrollment_seen_${user?.id}`, enrollmentBanner.bannerKey);
+                                                setEnrollmentBanner(null);
+                                            }}
+                                        />
+                                    )}
                                     <GWABlock profile={profile} gwa={gwa} gwaMeta={gwaMeta} sparkData={sparkData} cleared={cleared} />
+
+                                    {/* Reformed Student Guidance Banner */}
+                                    {profile?.was_reformed && (
+                                        <Block
+                                            className="p-5"
+                                            style={{
+                                                background: 'linear-gradient(135deg, rgba(39,174,96,0.06), rgba(39,174,96,0.02))',
+                                                border: '1px solid rgba(39,174,96,0.2)',
+                                                position: 'relative',
+                                                overflow: 'hidden',
+                                            }}
+                                        >
+                                            {/* Subtle left accent */}
+                                            <div style={{
+                                                position: 'absolute', left: 0, top: 0, bottom: 0, width: 3,
+                                                background: 'linear-gradient(to bottom, var(--student-green), var(--student-green-2))',
+                                                borderRadius: '3px 0 0 3px',
+                                            }} />
+
+                                            <div className="flex items-start gap-4">
+                                                <div
+                                                    className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                                                    style={{
+                                                        background: 'var(--student-green-dim2)',
+                                                        border: '1px solid rgba(39,174,96,0.3)',
+                                                        fontSize: '1.25rem',
+                                                    }}
+                                                >🌱</div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p
+                                                        className="text-[10px] uppercase tracking-widest font-bold mb-1"
+                                                        style={{ color: 'var(--student-green)', fontFamily: 'var(--student-font-mono)' }}
+                                                    >
+                                                        A Message for You — Second Chance
+                                                    </p>
+                                                    <p
+                                                        className="text-sm leading-relaxed mb-3"
+                                                        style={{ color: 'var(--student-white)', fontFamily: 'var(--student-font-body)' }}
+                                                    >
+                                                        Welcome back, <strong style={{ color: 'var(--student-green-2)' }}>{profile.name?.split(' ')[0]}</strong>. We all make mistakes — that&apos;s part of growing up. But what truly defines you is not the fall, it&apos;s the <strong>decision to stand back up and do better.</strong>
+                                                    </p>
+                                                    <p
+                                                        className="text-xs leading-relaxed mb-3"
+                                                        style={{ color: 'var(--student-white-dim)', fontFamily: 'var(--student-font-body)' }}
+                                                    >
+                                                        Your account has been restored because we believe in you. This institution — your professors, your classmates, and the people who built this system — all want to see you succeed. Academic integrity isn&apos;t just a rule; it&apos;s a promise you make to yourself and to everyone who believes in your future. Treat every interaction here with <strong style={{ color: 'var(--student-white)' }}>respect, honesty, and professionalism</strong>, and you&apos;ll never have to see that wall again.
+                                                    </p>
+                                                    <div
+                                                        className="flex items-center gap-2 px-3 py-2 rounded-lg"
+                                                        style={{
+                                                            background: 'var(--student-green-dim)',
+                                                            border: '1px solid rgba(39,174,96,0.15)',
+                                                            display: 'inline-flex',
+                                                        }}
+                                                    >
+                                                        <span style={{ fontSize: '.75rem' }}>✦</span>
+                                                        <span
+                                                            className="text-[11px] font-semibold"
+                                                            style={{ color: 'var(--student-green)', fontFamily: 'var(--student-font-mono)', letterSpacing: '.03em' }}
+                                                        >
+                                                            Make this chapter count. We&apos;re rooting for you.
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </Block>
+                                    )}
 
                                     {activeSchedule && (
                                         <Block
@@ -627,42 +1101,29 @@ const StudentDashboard = () => {
                                         </div>
                                     </Block>
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <Block className="p-5 cursor-pointer" onClick={() => setClearanceModal(true)}>
-                                            <p className="text-sm font-bold mb-2" style={{ color: 'var(--student-white)', fontFamily: 'var(--student-font-display)' }}>Clearance Status</p>
-                                            <div className="flex items-center gap-3 mb-1">
-                                                <p className="text-2xl font-black leading-none" style={{ color: cleared ? 'var(--student-green)' : 'var(--student-gold)', fontFamily: 'var(--student-font-display)' }}>
-                                                    {cleared ? 'Cleared' : 'Pending'}
-                                                </p>
-                                                <span className="text-[10px] underline decoration-dotted" style={{ color: 'var(--student-white-dim)', fontFamily: 'var(--student-font-mono)' }}>
-                                                    View Details
-                                                </span>
-                                            </div>
-                                            {failed > 0 && (
-                                                <p className="text-[10px] mt-1" style={{ color: 'var(--student-red)', fontFamily: 'var(--student-font-mono)' }}>
-                                                    ⚠ {failed} failed subject{failed > 1 ? 's' : ''} detected
-                                                </p>
-                                            )}
-                                        </Block>
+                                    <ClearanceBlock
+                                        profile={profile}
+                                        ojtClearance={ojtClearance}
+                                        equipClearance={equipClearance}
+                                    />
 
-                                        <Block className="p-5">
-                                            <p className="text-[10px] uppercase tracking-widest font-bold mb-3" style={{ color: 'var(--student-white-dim)', fontFamily: 'var(--student-font-mono)' }}>
-                                                Quick Actions
-                                            </p>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <button
-                                                    onClick={() => setTab('enrollment')}
-                                                    className="py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95"
-                                                    style={{ background: 'var(--student-gold)', color: 'var(--student-black)', fontFamily: 'var(--student-font-body)' }}
-                                                >Enroll Now</button>
-                                                <button
-                                                    onClick={() => setTab('support')}
-                                                    className="py-2.5 rounded-xl text-xs font-bold transition-all"
-                                                    style={{ background: 'var(--student-black-4)', color: 'var(--student-white-dim)', border: '1px solid rgba(201,168,76,0.15)', fontFamily: 'var(--student-font-body)' }}
-                                                >Support</button>
-                                            </div>
-                                        </Block>
-                                    </div>
+                                    <Block className="p-5">
+                                        <p className="text-[10px] uppercase tracking-widest font-bold mb-3" style={{ color: 'var(--student-white-dim)', fontFamily: 'var(--student-font-mono)' }}>
+                                            Quick Actions
+                                        </p>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <button
+                                                onClick={() => setTab('enrollment')}
+                                                className="py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95"
+                                                style={{ background: 'var(--student-gold)', color: 'var(--student-black)', fontFamily: 'var(--student-font-body)' }}
+                                            >Enroll Now</button>
+                                            <button
+                                                onClick={() => setTab('support')}
+                                                className="py-2.5 rounded-xl text-xs font-bold transition-all"
+                                                style={{ background: 'var(--student-black-4)', color: 'var(--student-white-dim)', border: '1px solid rgba(201,168,76,0.15)', fontFamily: 'var(--student-font-body)' }}
+                                            >Support</button>
+                                        </div>
+                                    </Block>
                                 </div>
                             )}
 
@@ -699,7 +1160,7 @@ const StudentDashboard = () => {
 
                             {/* GRADES */}
                             {tab === 'grades' && (
-                                <GradesTab grades={grades} gwa={gwa} gwaMeta={gwaMeta} passed={passed} failed={failed} earned={earned} academicStanding={academicStanding} />
+                                <GradesTab grades={grades} gwa={gwa} gwaMeta={gwaMeta} passed={passed} failed={failed} earned={earned} academicStanding={academicStanding} atRisk={atRisk} />
                             )}
 
                             {/* SMART ENROLLMENT */}
@@ -869,51 +1330,6 @@ const StudentDashboard = () => {
                 </div>
             )}
 
-            {/* Clearance modal */}
-            {clearanceModal && (
-                <div
-                    className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md"
-                    style={{ background: 'rgba(0,0,0,0.8)' }}
-                    onClick={() => setClearanceModal(false)}
-                >
-                    <Block
-                        className="p-8 max-w-sm w-full"
-                        style={{ border: `1px solid ${cleared ? 'var(--student-green)' : 'var(--student-gold)'}66` }}
-                        onClick={e => e.stopPropagation()}
-                    >
-                        <div className="flex justify-between items-start mb-5">
-                            <h3 className="text-xl font-bold" style={{ color: 'var(--student-white)', fontFamily: 'var(--student-font-display)' }}>Clearance Details</h3>
-                            <button onClick={() => setClearanceModal(false)} style={{ color: 'var(--student-white-dim)' }}>✕</button>
-                        </div>
-
-                        <div className="flex items-center gap-4 p-4 rounded-xl mb-5" style={{ background: cleared ? 'rgba(39,174,96,0.1)' : 'rgba(201,168,76,0.1)' }}>
-                            <span className="text-3xl">{cleared ? '📜' : '⏳'}</span>
-                            <div>
-                                <p className="font-bold text-base" style={{ color: cleared ? 'var(--student-green)' : 'var(--student-gold)', fontFamily: 'var(--student-font-display)' }}>
-                                    {cleared ? 'Account Cleared' : 'Hold Status'}
-                                </p>
-                                <p className="text-[10px] mt-0.5 uppercase" style={{ color: 'rgba(245,240,232,0.3)', fontFamily: 'var(--student-font-mono)' }}>
-                                    Updated: {new Date().toLocaleDateString()}
-                                </p>
-                            </div>
-                        </div>
-
-                        <p className="text-sm leading-relaxed mb-7" style={{ color: 'var(--student-white-dim)' }}>
-                            {profile?.clearance?.details || (
-                                cleared
-                                    ? 'Your account is in good standing. You are cleared for all semestral enrollment activities.'
-                                    : 'There are pending requirements on your account. Please settle these with the respective offices.'
-                            )}
-                        </p>
-
-                        <button
-                            onClick={() => setClearanceModal(false)}
-                            className="w-full py-3.5 rounded-xl font-bold text-sm transition-all active:scale-95"
-                            style={{ background: 'var(--student-black-4)', color: 'var(--student-gold)', border: '1px solid rgba(201,168,76,0.2)', fontFamily: 'var(--student-font-body)' }}
-                        >Acknowledge</button>
-                    </Block>
-                </div>
-            )}
         </div>
     );
 };

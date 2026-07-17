@@ -223,25 +223,19 @@ const ScanDiffViewer = ({ enrollment, onClose }) => {
                             Confidence Breakdown (4-Factor Analysis)
                         </p>
                         <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                            {/* ID document factors */}
-                            {breakdown.field_completeness != null && (
-                                <ConfidenceBar value={breakdown.field_completeness} label="Field Completeness (40%)" />
+                            {/* Both ID and COR share the same 4 backend keys:
+                                completeness, format_valid, consistency, richness */}
+                            {breakdown.completeness != null && (
+                                <ConfidenceBar value={breakdown.completeness} label="Completeness (30%)" />
                             )}
-                            {breakdown.format_validation != null && (
-                                <ConfidenceBar value={breakdown.format_validation} label="Format Validation (35%)" />
+                            {breakdown.format_valid != null && (
+                                <ConfidenceBar value={breakdown.format_valid} label="Format Valid (30%)" />
                             )}
-                            {breakdown.semantic_coherence != null && (
-                                <ConfidenceBar value={breakdown.semantic_coherence} label="Semantic Coherence (25%)" />
+                            {breakdown.consistency != null && (
+                                <ConfidenceBar value={breakdown.consistency} label="Consistency (25%)" />
                             )}
-                            {/* COR document factors */}
-                            {breakdown.subject_count_validity != null && (
-                                <ConfidenceBar value={breakdown.subject_count_validity} label="Subject Count (40%)" />
-                            )}
-                            {breakdown.units_consistency != null && (
-                                <ConfidenceBar value={breakdown.units_consistency} label="Units Consistency (35%)" />
-                            )}
-                            {breakdown.subject_code_format != null && (
-                                <ConfidenceBar value={breakdown.subject_code_format} label="Code Format (25%)" />
+                            {breakdown.richness != null && (
+                                <ConfidenceBar value={breakdown.richness} label="Richness (15%)" />
                             )}
                         </div>
                         {/* Overall composite */}

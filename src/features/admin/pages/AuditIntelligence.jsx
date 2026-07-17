@@ -79,6 +79,8 @@ const AuditIntelligence = () => {
     const [evtLoad, setEvtLoad] = useState(false);
     const [error, setError] = useState(null);
     const [page, setPage] = useState(0);
+    const [genRunning, setGenRunning] = useState(false);
+    const [genResult, setGenResult] = useState(null);
     const LIMIT = 50;
 
     useEffect(() => {
@@ -108,6 +110,28 @@ const AuditIntelligence = () => {
     const handleFilters = (f) => { setFilters(f); setPage(0); };
     const handleReset = () => { setFilters(DEFAULT_FILTERS); setPage(0); };
 
+    const handleGenerateNarratives = async () => {
+        setGenRunning(true);
+        setGenResult(null);
+        try {
+            const result = await adminApi.processNarratives();
+            setGenResult(result);
+            fetchEvents(filters, page);
+        } catch {
+            setGenResult({ error: true });
+        } finally {
+            setGenRunning(false);
+        }
+    };
+
+    const handleEventUpdated = (eventId) => {
+        setEvents(prev => prev.map(ev =>
+            ev.event_id === eventId
+                ? { ...ev, narrative_acknowledged_at: new Date().toISOString() }
+                : ev
+        ));
+    };
+
     const score = summary?.anomaly_score ?? 0;
     const highCount = summary?.high_anomalies ?? 0;
     const totalEvents = summary?.total_events ?? 0;
@@ -118,9 +142,33 @@ const AuditIntelligence = () => {
 
             {/* ✅ Shared PageHeader */}
             <PageHeader
-                title="Audit Intelligence"
                 subtitle="Behavioral audit log — every system action recorded with AI anomaly scoring."
                 badge={<StatusBadge variant="info" label="SCANNER ACTIVE" showDot />}
+                actions={
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        {genResult && !genResult.error && (
+                            <span style={{
+                                fontFamily: 'var(--font-terminal)', fontSize: '0.55rem',
+                                letterSpacing: '0.10em', color: 'var(--neon-green)',
+                            }}>
+                                ✓ {genResult.generated} generated, {genResult.failed} failed
+                            </span>
+                        )}
+                        {genResult?.error && (
+                            <span style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.55rem', color: 'var(--neon-red)' }}>
+                                ✗ Generation failed
+                            </span>
+                        )}
+                        <button
+                            className="btn-ghost"
+                            style={{ fontSize: '0.58rem', padding: '6px 14px' }}
+                            onClick={handleGenerateNarratives}
+                            disabled={genRunning}
+                        >
+                            {genRunning ? '◈ GENERATING...' : '◈ GENERATE NARRATIVES'}
+                        </button>
+                    </div>
+                }
             />
 
             {error && (
@@ -199,7 +247,7 @@ const AuditIntelligence = () => {
                     </div>
                 }
             >
-                <AuditTable events={events} loading={evtLoad} />
+                <AuditTable events={events} loading={evtLoad} onEventUpdated={handleEventUpdated} />
             </CyberPanel>
 
         </div>

@@ -2,7 +2,7 @@
 // Two-panel layout: left = scrollable queue, right = selected application detail.
 // No modals — approve/reject action lives inline in the right panel.
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { adminApi } from '../api/adminApi';
 import { useAdminRefresh } from '../layout/AdminLayout';
 import Skeleton from '../../../components/ui/Skeleton';
@@ -13,6 +13,7 @@ import CyberPanel from '../../../components/ui/CyberPanel';
 import StatusBadge from '../../../components/ui/StatusBadge';
 import DataReadout from '../../../components/ui/DataReadout';
 import { ENROLLMENT_STATUS_VARIANT } from '../../../constants/statusVariants';
+import { downloadCSV } from '../../../utils/csvDownload';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -72,6 +73,85 @@ const QueueRow = ({ req, selected, onClick, isChecked, onToggleCheck }) => {
     );
 };
 
+// ── Subject context panel (shown when no COR is attached) ─────────────────
+const SubjectContextPanel = ({ req }) => {
+    const [grades, setGrades] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        setGrades(null); setLoading(true);
+        adminApi.fetchStudentGrades(req.student_account_id)
+            .then(data => setGrades(data?.records ?? []))
+            .catch(() => setGrades([]))
+            .finally(() => setLoading(false));
+    }, [req.student_account_id]);
+
+    const requestedSubjects = req.extracted_subjects ?? [];
+    const currentSubjects   = (grades ?? []).filter(r =>
+        r.completion_status === 'IN PROGRESS' || r.completion_status === 'ENROLLED'
+    );
+    const passedSubjects    = (grades ?? []).filter(r => r.completion_status === 'PASSED');
+    const failedSubjects    = (grades ?? []).filter(r => r.completion_status === 'FAILED');
+
+    const chipStyle = (color) => ({
+        display: 'inline-block', padding: '3px 8px', borderRadius: 4, border: `1px solid ${color}40`,
+        background: `${color}12`, color, fontFamily: 'var(--font-terminal)', fontSize: '0.68rem', fontWeight: 600,
+    });
+
+    return (
+        <CyberPanel title="Enrollment Context" subtitle="No COR on file — review subject data before deciding">
+            {/* Requested subjects */}
+            <div style={{ marginBottom: 14 }}>
+                <p style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.58rem', letterSpacing: '0.12em', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 8 }}>
+                    Subjects Requesting to Enroll
+                </p>
+                {requestedSubjects.length === 0 ? (
+                    <span style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.68rem', color: 'var(--text-muted)' }}>No subject selection recorded</span>
+                ) : (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {requestedSubjects.map(code => (
+                            <span key={code} style={chipStyle('var(--neon-cyan)')}>{code}</span>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* Current subjects */}
+            <div style={{ marginBottom: 14 }}>
+                <p style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.58rem', letterSpacing: '0.12em', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 8 }}>
+                    Currently Enrolled Subjects
+                </p>
+                {loading ? (
+                    <span style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.68rem', color: 'var(--text-muted)' }}>Loading…</span>
+                ) : currentSubjects.length === 0 ? (
+                    <span style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.68rem', color: 'var(--text-muted)' }}>None on record</span>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {currentSubjects.map(r => (
+                            <div key={r.subject_code} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 10px', background: 'var(--bg-depth)', borderRadius: 5, border: '1px solid var(--border-subtle)' }}>
+                                <span style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.70rem', fontWeight: 600, color: 'var(--text-primary)' }}>{r.subject_code}</span>
+                                <span style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.62rem', color: 'var(--text-muted)' }}>{r.subject_title}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* Academic summary */}
+            {!loading && grades !== null && (
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', paddingTop: 10, borderTop: '1px solid var(--border-subtle)' }}>
+                    <span style={chipStyle('var(--neon-green)')}>{passedSubjects.length} Passed</span>
+                    <span style={chipStyle('var(--neon-red)')}>{failedSubjects.length} Failed</span>
+                    <span style={chipStyle('var(--neon-orange)')}>{currentSubjects.length} In Progress</span>
+                    <span style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.62rem', color: 'var(--text-muted)', alignSelf: 'center' }}>
+                        Target: Year {req.target_year_level} — Sem {req.target_semester}
+                    </span>
+                </div>
+            )}
+        </CyberPanel>
+    );
+};
+
 // ── Detail panel ───────────────────────────────────────────────────────────
 const DetailPanel = ({ req, onDecision, submitting }) => {
     const [notes, setNotes] = useState('');
@@ -81,6 +161,7 @@ const DetailPanel = ({ req, onDecision, submitting }) => {
     const isPending = status === 'PENDING';
     const hasImage = req.cor_image_path && req.cor_image_path !== 'initial_registration_cor';
     const imgSrc = hasImage ? `${API_BASE}/api/uploads/${req.cor_image_path}` : null;
+    const isNewRegistrant = req.cor_image_path === 'initial_registration_cor';
 
     const rows = [
         { label: 'Request ID', value: `#${req.request_id}` },
@@ -123,11 +204,14 @@ const DetailPanel = ({ req, onDecision, submitting }) => {
                     </div>
                 </CyberPanel>
             ) : (
-                <CyberPanel title="Certificate of Registration">
-                    <div style={{ padding: '20px 0', textAlign: 'center', fontFamily: 'var(--font-terminal)', fontSize: '0.68rem', color: 'var(--text-muted)', letterSpacing: '0.10em' }}>
-                        {req.cor_image_path === 'initial_registration_cor' ? 'NEW REGISTRANT — NO COR ON FILE' : 'NO DOCUMENT ATTACHED'}
-                    </div>
-                </CyberPanel>
+                <>
+                    <CyberPanel title="Certificate of Registration">
+                        <div style={{ padding: '12px 0', textAlign: 'center', fontFamily: 'var(--font-terminal)', fontSize: '0.68rem', color: 'var(--text-muted)', letterSpacing: '0.10em' }}>
+                            {isNewRegistrant ? 'NEW REGISTRANT — NO COR ON FILE' : 'NO DOCUMENT ATTACHED'}
+                        </div>
+                    </CyberPanel>
+                    <SubjectContextPanel req={req} />
+                </>
             )}
 
             {isPending ? (
@@ -174,6 +258,7 @@ const ReviewEnrollments = () => {
     const [selected, setSelected] = useState(null);
     const [submitting, setSubmitting] = useState(null);
     const [statusFilter, setStatusFilter] = useState('PENDING');
+    const [searchTerm, setSearchTerm] = useState('');
 
     // Bulk Action State
     const [selectedIds, setSelectedIds] = useState([]);
@@ -198,10 +283,16 @@ const ReviewEnrollments = () => {
         REJECTED: enrollments.filter(e => e.review_status === 'REJECTED').length,
     }), [enrollments]);
 
-    const visible = useMemo(() =>
-        statusFilter === 'ALL' ? enrollments : enrollments.filter(e => e.review_status === statusFilter),
-        [enrollments, statusFilter]
-    );
+    const visible = useMemo(() => {
+        const byStatus = statusFilter === 'ALL' ? enrollments : enrollments.filter(e => e.review_status === statusFilter);
+        if (!searchTerm.trim()) return byStatus;
+        const q = searchTerm.toLowerCase();
+        return byStatus.filter(e =>
+            e.student_name?.toLowerCase().includes(q) ||
+            e.student_number?.toLowerCase().includes(q) ||
+            String(e.request_id).includes(q)
+        );
+    }, [enrollments, statusFilter, searchTerm]);
 
     // ── Handlers ──
     const handleDecision = async (req, action, notes) => {
@@ -256,9 +347,28 @@ const ReviewEnrollments = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
             <PageHeader
-                title="Enrollment Triage"
                 subtitle="Review student submissions — select a request to view details and act."
                 badge={counts.PENDING > 0 ? <StatusBadge variant="warning" label={`${counts.PENDING} PENDING`} showDot /> : null}
+                actions={
+                    <button
+                        id="export-enrollment-queue-btn"
+                        onClick={() =>
+                            downloadCSV(
+                                `/enrollment/export/enrollment-queue.csv?status_filter=${statusFilter}`,
+                                'enrollment-queue.csv'
+                            ).catch(() => flash('Export failed. Try a narrower filter.', 'error'))
+                        }
+                        style={{
+                            padding: '7px 14px', fontFamily: 'var(--font-terminal)', fontSize: '0.65rem',
+                            fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
+                            background: 'var(--bg-surface)', border: '1px solid var(--border-default)',
+                            borderRadius: 6, color: 'var(--text-secondary)', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', gap: 6,
+                        }}
+                    >
+                        ⬇ Export CSV
+                    </button>
+                }
             />
 
             {error && <div style={{ padding: '10px 14px', fontFamily: 'var(--font-terminal)', fontSize: '0.72rem', color: 'var(--neon-red)', background: 'var(--color-danger-bg)', border: '1px solid var(--border-critical)', borderRadius: 6 }}>{error}</div>}
@@ -281,6 +391,20 @@ const ReviewEnrollments = () => {
 
                 {/* LEFT — Queue list */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+
+                    {/* Search input */}
+                    <div style={{ marginBottom: 8 }}>
+                        <input
+                            type="text"
+                            placeholder="Search by name, student ID, or request #..."
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                            style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-input)', border: '1px solid var(--border-default)', borderRadius: 6, padding: '8px 12px', fontFamily: 'var(--font-terminal)', fontSize: '0.72rem', color: 'var(--text-primary)', outline: 'none' }}
+                            onFocus={e => { e.target.style.borderColor = 'var(--border-focus)'; }}
+                            onBlur={e => { e.target.style.borderColor = 'var(--border-default)'; }}
+                        />
+                    </div>
+
                     <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border-subtle)', marginBottom: 10 }}>
                         {['ALL', 'PENDING', 'APPROVED', 'REJECTED'].map(s => {
                             const active = statusFilter === s;
@@ -330,7 +454,7 @@ const ReviewEnrollments = () => {
 
                         {visible.length === 0 ? (
                             <p style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.68rem', color: 'var(--text-muted)', textAlign: 'center', padding: '24px 0', letterSpacing: '0.10em' }}>
-                                NO SUBMISSIONS IN THIS FILTER
+                                {searchTerm.trim() ? `NO MATCHES FOR "${searchTerm.toUpperCase()}"` : 'NO SUBMISSIONS IN THIS FILTER'}
                             </p>
                         ) : visible.map(req => (
                             <QueueRow

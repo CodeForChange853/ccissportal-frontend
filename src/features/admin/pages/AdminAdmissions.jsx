@@ -2,7 +2,7 @@
 // Direct Admission — full-width two-column layout.
 // Left: student info + credentials form. Right: what this does + quick reference.
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { adminApi } from '../api/adminApi';
 import CyberPanel from '../../../components/ui/CyberPanel';
 import StatusBadge from '../../../components/ui/StatusBadge';
@@ -23,17 +23,32 @@ const lbl = {
     color: 'var(--text-muted)', display: 'block', marginBottom: 5,
 };
 
-const COURSES = [
-    { value: 'BSCS', label: 'BSCS — Bachelor of Science in Computer Science' },
-    { value: 'BSIT', label: 'BSIT — Bachelor of Science in Information Technology' },
-    { value: 'BSIS', label: 'BSIS — Bachelor of Science in Information Systems' },
-];
+// Human-readable labels for each program code.
+// Programs fetched from the DB are matched here; unrecognised codes fall back
+// to their raw code (e.g. a brand-new program appears as-is until mapped).
+const PROGRAM_LABELS = {
+    BSCS:  'BSCS — Bachelor of Science in Information Science',
+    BSIT:  'BSIT — Bachelor of Science in Information Technology',
+    BSIS:  'BSIS — Bachelor of Science in Information Sciences',
+    BSEMC: 'BSEMC — Bachelor of Science in Entertainment and Multimedia Computing',
+};
 
 const AdminAdmissions = () => {
     const [form, setForm] = useState(EMPTY);
     const [submitting, setSubmitting] = useState(false);
     const [showPw, setShowPw] = useState(false);
     const [admitted, setAdmitted] = useState([]);
+    const [programs, setPrograms] = useState([]);
+
+    // Load available programs from the database on mount
+    useEffect(() => {
+        adminApi.fetchPrograms()
+            .then(codes => setPrograms(codes))
+            .catch(() => {
+                // Fallback to known programs so the form remains usable offline
+                setPrograms(['BSCS', 'BSIT', 'BSIS', 'BSEMC']);
+            });
+    }, []);
 
     // ✅ Use shared ToastContext — removed stale local useState toast
     const { toast } = useToast();
@@ -66,7 +81,6 @@ const AdminAdmissions = () => {
 
             {/* ✅ Shared PageHeader replaces copy-pasted h1 block */}
             <PageHeader
-                title="Direct Admission"
                 subtitle="Manual enrollment bypass — provisions a student account without the registration wizard."
                 badge={<StatusBadge variant="warning" label="ADMIN OVERRIDE" showDot={false} />}
             />
@@ -93,7 +107,11 @@ const AdminAdmissions = () => {
                             <div>
                                 <label style={lbl}>Program</label>
                                 <select required {...f('course')} style={inp}>
-                                    {COURSES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                                    {programs.map(code => (
+                                        <option key={code} value={code}>
+                                            {PROGRAM_LABELS[code] ?? code}
+                                        </option>
+                                    ))}
                                 </select>
                             </div>
                             <div>

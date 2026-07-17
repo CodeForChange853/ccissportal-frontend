@@ -1,6 +1,6 @@
 // frontend/src/features/admin/components/dashboard/ActivityGraph.jsx
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 
 const W = 380;
 const H = 240;
@@ -23,7 +23,7 @@ const HUB_POSITIONS = [
 function buildNodes(tickets) {
     const counts = {};
     tickets.forEach(t => {
-        const cat = t.ai_predicted_category ?? 'REGISTRAR';
+        const cat = t.department ?? 'REGISTRAR';
         counts[cat] = (counts[cat] || 0) + 1;
     });
 
@@ -36,9 +36,16 @@ function buildNodes(tickets) {
 
 const ActivityGraph = ({ tickets = [] }) => {
     const { counts, recent } = useMemo(() => buildNodes(tickets), [tickets]);
+    const [tooltip, setTooltip] = useState(null);
 
     const center = HUB_POSITIONS[0];
     const hubs = HUB_POSITIONS.slice(1);
+
+    const showTip = (x, y, line1, line2) => {
+        const clampedX = Math.min(Math.max(x, 55), W - 55);
+        setTooltip({ x: clampedX, y, line1, line2 });
+    };
+    const hideTip = () => setTooltip(null);
 
     return (
         <svg
@@ -80,16 +87,23 @@ const ActivityGraph = ({ tickets = [] }) => {
 
             {/* Ticket nodes along spokes */}
             {recent.map((t, i) => {
-                const cat = t.ai_predicted_category ?? 'REGISTRAR';
+                const cat = t.department ?? 'REGISTRAR';
                 const hub = hubs.find(h => h.key === cat) ?? hubs[1];
                 const cfg = CATEGORY_CONFIG[cat] ?? { color: '#4a7a94' };
                 const pct = 0.25 + (i % 3) * 0.22;
                 const x = center.x + (hub.x - center.x) * pct;
                 const y = center.y + (hub.y - center.y) * pct;
                 const isOpen = t.ticket_status === 'OPEN';
+                const subject = t.issue_subject || cat;
 
                 return (
-                    <g key={t.ticket_id ?? i}>
+                    <g
+                        key={t.ticket_id ?? i}
+                        style={{ cursor: 'default' }}
+                        onMouseEnter={() => showTip(x, y - 14, subject.length > 22 ? subject.slice(0, 22) + '…' : subject, t.ticket_status)}
+                        onMouseLeave={hideTip}
+                    >
+                        <title>{subject} — {t.ticket_status}</title>
                         <circle
                             cx={x} cy={y} r={isOpen ? 5 : 3.5}
                             fill={cfg.color}
@@ -118,7 +132,12 @@ const ActivityGraph = ({ tickets = [] }) => {
                 const r = count > 0 ? 20 : 14;
 
                 return (
-                    <g key={`hub-${hub.key}`}>
+                    <g
+                        key={`hub-${hub.key}`}
+                        style={{ cursor: 'pointer' }}
+                        onMouseEnter={() => showTip(hub.x, hub.y - r - 14, hub.key, `${count} ticket${count !== 1 ? 's' : ''}`)}
+                        onMouseLeave={hideTip}
+                    >
                         <circle
                             cx={hub.x} cy={hub.y} r={r + 8}
                             fill={`url(#grad-${hub.key.replace(/\s/g, '-')})`}
@@ -191,6 +210,39 @@ const ActivityGraph = ({ tickets = [] }) => {
             >
                 {tickets.length}
             </text>
+
+            {/* Hover tooltip */}
+            {tooltip && (
+                <g style={{ pointerEvents: 'none' }}>
+                    <rect
+                        x={tooltip.x - 54} y={tooltip.y - 24}
+                        width={108} height={30}
+                        rx={4}
+                        fill="rgba(5,8,22,0.95)"
+                        stroke="rgba(0,245,255,0.3)"
+                        strokeWidth={0.8}
+                    />
+                    <text
+                        x={tooltip.x} y={tooltip.y - 11}
+                        textAnchor="middle"
+                        fontFamily="var(--font-terminal)"
+                        fontSize="8"
+                        fontWeight="600"
+                        fill="#00f5ff"
+                    >
+                        {tooltip.line1}
+                    </text>
+                    <text
+                        x={tooltip.x} y={tooltip.y + 1}
+                        textAnchor="middle"
+                        fontFamily="var(--font-terminal)"
+                        fontSize="7"
+                        fill="#8fb3c8"
+                    >
+                        {tooltip.line2}
+                    </text>
+                </g>
+            )}
         </svg>
     );
 };

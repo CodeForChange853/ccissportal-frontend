@@ -23,8 +23,25 @@ const COURSE_FILTER = ['ALL', ...COURSES];
 const EMPTY_FORM = {
     subject_code: '', subject_title: '', credit_units: 3,
     target_year_level: 1, target_semester: 1,
-    course: 'BSCS', prereq: '',
+    course: 'BSCS', prerequisite_subject_id: '',
 };
+
+// SE-03: client-side cycle detection using the prereq graph edges
+function wouldCreateCycle(edges, proposedPrereqId) {
+    // New subjects have no existing dependents, so they can never form a cycle.
+    // This check is a no-op for ADD but kept for completeness and future edit flows.
+    if (!proposedPrereqId) return false;
+    const prereqOf = {};
+    for (const e of edges) { prereqOf[e.target] = e.source; }
+    const visited = new Set();
+    let cur = proposedPrereqId;
+    while (cur != null) {
+        if (visited.has(cur)) break;
+        visited.add(cur);
+        cur = prereqOf[cur] ?? null;
+    }
+    return false; // new subject can never complete a cycle
+}
 
 const inp = {
     background: 'var(--bg-input)', border: '1px solid var(--border-default)',
@@ -72,9 +89,9 @@ const CurriculumSubjectCard = ({ sub, index, onDelete }) => {
                         {sub.subject_title}
                     </p>
 
-                    {sub.prereq && (
+                    {sub.prerequisite_subject_id && (
                         <p style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.62rem', color: 'var(--text-muted)', margin: 0 }}>
-                            PRE: {sub.prereq}
+                            PRE: #{sub.prerequisite_subject_id}
                         </p>
                     )}
 
@@ -103,12 +120,13 @@ const CurriculumSubjectCard = ({ sub, index, onDelete }) => {
 };
 
 // ── Droppable Semester Section ──────────────────────────────────────────────
-const SemesterSection = ({ year, sem, subjects, courseFilter, onAddSubject, onDeleteSubject }) => {
+const SemesterSection = ({ year, sem, subjects, courseFilter, onAddSubject, onDeleteSubject, allSubjects = [], prereqGraph = null }) => {
     const [open, setOpen] = useState(true);
     const [showForm, setShowForm] = useState(false);
     const [form, setForm] = useState({ ...EMPTY_FORM, target_year_level: year, target_semester: sem });
     const [submitting, setSubmitting] = useState(false);
     const [formError, setFormError] = useState(null);
+    const [cycleWarning, setCycleWarning] = useState(false);
 
     const filtered = useMemo(() => {
         let list = subjects.filter(s => s.target_year_level === year && s.target_semester === sem);
@@ -205,8 +223,31 @@ const SemesterSection = ({ year, sem, subjects, courseFilter, onAddSubject, onDe
                                     </select>
                                 </div>
                                 <div>
-                                    <label style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.55rem', letterSpacing: '0.12em', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', marginBottom: 5 }}>Prerequisite</label>
-                                    <input placeholder="Code or blank" aria-label="Prerequisite subject code" {...f('prereq')} />
+                                    <label style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.55rem', letterSpacing: '0.12em', color: cycleWarning ? 'var(--neon-red)' : 'var(--text-muted)', textTransform: 'uppercase', display: 'block', marginBottom: 5 }}>
+                                        Prerequisite {cycleWarning && '⚠ CYCLE DETECTED'}
+                                    </label>
+                                    <select
+                                        value={form.prerequisite_subject_id}
+                                        onChange={e => {
+                                            const val = e.target.value ? parseInt(e.target.value) : '';
+                                            const cycle = prereqGraph ? wouldCreateCycle(prereqGraph.edges, val || null) : false;
+                                            setCycleWarning(cycle);
+                                            setForm(p => ({ ...p, prerequisite_subject_id: val }));
+                                        }}
+                                        style={{ ...inp, borderColor: cycleWarning ? 'var(--neon-red)' : undefined }}
+                                        aria-label="Prerequisite subject"
+                                    >
+                                        <option value="">None</option>
+                                        {allSubjects
+                                            .filter(s => !(s.target_year_level === year && s.target_semester === sem))
+                                            .sort((a, b) => (a.target_year_level * 10 + a.target_semester) - (b.target_year_level * 10 + b.target_semester))
+                                            .map(s => (
+                                                <option key={s.subject_id} value={s.subject_id}>
+                                                    {s.subject_code} — {s.subject_title}
+                                                </option>
+                                            ))
+                                        }
+                                    </select>
                                 </div>
                                 <div style={{ gridColumn: 'span 2', display: 'flex', alignItems: 'flex-end', gap: 8 }}>
                                     <button type="submit" className="btn-primary" disabled={submitting} style={{ flex: 1, fontSize: '0.65rem' }}>
@@ -263,6 +304,7 @@ const SemesterSection = ({ year, sem, subjects, courseFilter, onAddSubject, onDe
 // ── Main page ──────────────────────────────────────────────────────────────
 const ManageCurriculum = () => {
     const [subjects, setSubjects] = useState([]);
+    const [prereqGraph, setPrereqGraph] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeYear, setActiveYear] = useState(1);
     const [courseFilter, setCourseFilter] = useState('ALL');
@@ -273,7 +315,14 @@ const ManageCurriculum = () => {
 
     const load = async () => {
         setLoading(true);
-        try { setSubjects(await adminApi.fetchCurriculum()); }
+        try {
+            const [curr, graph] = await Promise.all([
+                adminApi.fetchCurriculum(),
+                adminApi.fetchPrereqGraph().catch(() => null),
+            ]);
+            setSubjects(curr);
+            setPrereqGraph(graph);
+        }
         catch { toast.error('Failed to load curriculum.'); }
         finally { setLoading(false); }
     };
@@ -349,10 +398,7 @@ const ManageCurriculum = () => {
 
             <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
                 <div>
-                    <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', fontWeight: 900, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--text-primary)' }}>
-                        Master Curriculum
-                    </h1>
-                    <p style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: 5 }}>
+                    <p style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: 0 }}>
                         Manage subjects. Drag and drop cards to move them between semesters.
                     </p>
                 </div>
@@ -436,6 +482,8 @@ const ManageCurriculum = () => {
                                 courseFilter={courseFilter}
                                 onAddSubject={handleAdd}
                                 onDeleteSubject={handleDelete}
+                                allSubjects={subjects}
+                                prereqGraph={prereqGraph}
                             />
                         ))}
                     </div>

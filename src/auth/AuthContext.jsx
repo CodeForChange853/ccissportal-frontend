@@ -5,8 +5,6 @@ export const AuthContext = createContext(null);
 
 export const useAuth = () => useContext(AuthContext);
 
-
-
 const parseJwt = (token) => {
   try {
     const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
@@ -22,7 +20,6 @@ const parseJwt = (token) => {
   }
 };
 
-// Provider
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -39,12 +36,19 @@ export function AuthProvider({ children }) {
           id: storedData.account_id || decoded.id,
           authenticated: true,
         });
+        setLoading(false);
       } else {
+        // Access token expired — attempt silent refresh via HTTP-only cookie
         localStorage.removeItem('token');
         localStorage.removeItem('user_data');
+        api.post('/authentication/refresh')
+          .then((res) => { setSession(res.data); })
+          .catch(() => { /* no valid refresh cookie — stay logged out */ })
+          .finally(() => setLoading(false));
       }
+    } else {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   const setSession = (loginData) => {
@@ -85,7 +89,6 @@ export function AuthProvider({ children }) {
       } else if (typeof detail === 'string') {
         errorMessage = detail;
       } else if (typeof detail === 'object' && detail !== null) {
-        // Handle object-based details like maintenance info
         errorMessage = detail.message || detail.reason || errorMessage;
       }
 
@@ -93,7 +96,8 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try { await api.post('/authentication/logout'); } catch { /* ignore */ }
     localStorage.removeItem('token');
     localStorage.removeItem('user_data');
     setUser(null);

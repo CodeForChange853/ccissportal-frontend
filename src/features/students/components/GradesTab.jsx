@@ -1,5 +1,87 @@
 import React, { useMemo } from 'react';
 
+// SE-04 — At-Risk banner
+const RISK_CFG = {
+    HIGH:     { color: 'var(--student-red)',     bg: 'rgba(239,68,68,0.08)',     border: 'rgba(239,68,68,0.25)',     label: 'HIGH RISK',     icon: '🔴' },
+    MODERATE: { color: 'var(--student-warning)', bg: 'rgba(245,158,11,0.08)',    border: 'rgba(245,158,11,0.25)',    label: 'MODERATE RISK', icon: '🟡' },
+    LOW:      { color: 'var(--student-green)',   bg: 'rgba(34,197,94,0.06)',     border: 'rgba(34,197,94,0.20)',     label: 'LOW RISK',      icon: '🟢' },
+};
+
+const ScorePill = ({ label, value, color }) => (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+        padding: '6px 10px', borderRadius: 8,
+        background: `${color}12`, border: `1px solid ${color}28` }}>
+        <span style={{ fontFamily: 'var(--student-font-mono)', fontSize: '0.65rem',
+            color, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+            {label}
+        </span>
+        <span style={{ fontFamily: 'var(--student-font-display)', fontSize: '1.1rem',
+            fontWeight: 900, color }}>
+            {value}
+        </span>
+    </div>
+);
+
+const AtRiskBanner = ({ atRisk }) => {
+    if (!atRisk) return null;
+    const cfg = RISK_CFG[atRisk.risk_level] || RISK_CFG.LOW;
+    const bd  = atRisk.breakdown;
+
+    return (
+        <div style={{ borderRadius: 16, padding: '16px 20px',
+            background: cfg.bg, border: `1px solid ${cfg.border}`, marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: '1.2rem' }}>{cfg.icon}</span>
+                    <div>
+                        <p style={{ fontFamily: 'var(--student-font-mono)', fontSize: '0.6rem',
+                            color: cfg.color, fontWeight: 700, letterSpacing: '0.15em',
+                            textTransform: 'uppercase', marginBottom: 2 }}>
+                            At-Risk Early Warning
+                        </p>
+                        <p style={{ fontFamily: 'var(--student-font-display)', fontSize: '1.1rem',
+                            fontWeight: 900, color: cfg.color, lineHeight: 1 }}>
+                            {cfg.label}
+                            <span style={{ fontFamily: 'var(--student-font-mono)', fontSize: '0.85rem',
+                                fontWeight: 700, marginLeft: 8, opacity: 0.7 }}>
+                                {atRisk.risk_score}/100
+                            </span>
+                        </p>
+                    </div>
+                </div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <ScorePill label="Failed Load" value={bd.failed_load_score} color={cfg.color} />
+                    <ScorePill label="GWA"         value={bd.gwa_score}         color={cfg.color} />
+                    <ScorePill label="Variance"    value={bd.variance_score}    color={cfg.color} />
+                    <ScorePill label="Consult"     value={bd.consultation_score} color={cfg.color} />
+                </div>
+            </div>
+
+            {atRisk.interventions && atRisk.interventions.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <p style={{ fontFamily: 'var(--student-font-mono)', fontSize: '0.58rem',
+                        color: 'var(--student-white-dim)', letterSpacing: '0.12em',
+                        textTransform: 'uppercase', marginBottom: 2 }}>
+                        Recommended Actions
+                    </p>
+                    {atRisk.interventions.map((msg, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8,
+                            padding: '7px 10px', borderRadius: 8,
+                            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                            <span style={{ color: cfg.color, fontSize: '0.75rem', marginTop: 1, flexShrink: 0 }}>›</span>
+                            <p style={{ fontFamily: 'var(--student-font-body)', fontSize: '0.72rem',
+                                color: 'var(--student-white-dim)', lineHeight: 1.5, margin: 0 }}>
+                                {msg}
+                            </p>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
 const GradeCard = ({ grade }) => {
     const isPassed = grade.completion_status === 'PASSED';
     const isFailed = grade.completion_status === 'FAILED';
@@ -43,7 +125,7 @@ const GradeCard = ({ grade }) => {
     );
 };
 
-const GradesTab = ({ grades, gwa, gwaMeta, passed, failed, earned, academicStanding }) => {
+const GradesTab = ({ grades, gwa, gwaMeta, passed, failed, earned, academicStanding, atRisk }) => {
     const sortedGrades = useMemo(() => {
         return [...grades].map(g => ({
             ...g,
@@ -63,6 +145,7 @@ const GradesTab = ({ grades, gwa, gwaMeta, passed, failed, earned, academicStand
 
     return (
         <div className="space-y-8">
+            <AtRiskBanner atRisk={atRisk} />
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="rounded-2xl p-5" style={{ background: 'var(--student-black-3)', border: '1px solid rgba(201, 168, 76, 0.1)' }}>
                     <p className="text-[10px] uppercase font-bold text-student-white-dim opacity-50 mb-1 tracking-widest font-mono">Cumulative GWA</p>
@@ -85,13 +168,13 @@ const GradesTab = ({ grades, gwa, gwaMeta, passed, failed, earned, academicStand
                         let sub   = 'Current Evaluation';
 
                         if (retentionStatus === 'DROPOUT_RISK') {
-                            label = 'DROPOUT RISK'; color = '#c0392b'; sub = 'Mandatory Counseling Required';
+                            label = 'DROPOUT RISK'; color = 'var(--student-red)'; sub = 'Mandatory Counseling Required';
                         } else if (retentionStatus === 'UNDER_RETENTION') {
-                            label = 'UNDER RETENTION'; color = '#f56c6c'; sub = 'Retention Exam Required';
+                            label = 'UNDER RETENTION'; color = 'var(--student-red-light)'; sub = 'Retention Exam Required';
                         } else if (retentionStatus === 'AT_RISK') {
-                            label = 'AT RISK'; color = '#e6a23c'; sub = 'Monitor Closely';
+                            label = 'AT RISK'; color = 'var(--student-warning)'; sub = 'Monitor Closely';
                         } else if (isIrregular) {
-                            label = 'IRREGULAR'; color = '#e6a23c'; sub = 'Has Back Subjects';
+                            label = 'IRREGULAR'; color = 'var(--student-warning)'; sub = 'Has Back Subjects';
                         }
 
                         return (
@@ -131,7 +214,7 @@ const GradesTab = ({ grades, gwa, gwaMeta, passed, failed, earned, academicStand
                     <div>
                         <h4 className="text-white font-bold text-base mb-1" style={{ fontFamily: 'var(--student-font-display)' }}>Academic Integrity Notice</h4>
                         <p className="text-xs text-student-white-dim leading-relaxed">
-                            These grades are for viewing purposes only and do not serve as an official Transcript of Records. For official documentation, please visit the Registrar's Office or request through the Support portal.
+                            These grades are for viewing purposes only and do not serve as an official Transcript of Records. For official documentation, please visit the Registrar&apos;s Office or request through the Support portal.
                         </p>
                     </div>
                 </div>

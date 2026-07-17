@@ -168,3 +168,107 @@ export const RefreshIcon = ({ spinning, size = 18, className = '' }) => (
         <path d="M15.4 9A7 7 0 1114 5.3L16 3" />
     </svg>
 );
+
+export const ForecastIcon = ({ size = 18, className = '' }) => (
+    <svg {...iconProps(size, className)}>
+        <polyline points="2,13 6,8 10,10 14,5" />
+        <path d="M14 5h2v2" />
+        <line x1="2" y1="16" x2="16" y2="16" />
+    </svg>
+);
+
+// ── Secretary-specific icons ──────────────────────────────────────────────────
+export const OJTIcon = ({ size = 18, className = '' }) => (
+    <svg {...iconProps(size, className)}>
+        <rect x="3" y="3" width="12" height="12" rx="2" />
+        <path d="M7 9l2 2 4-4" />
+        <path d="M3 7h12" />
+    </svg>
+);
+
+export const INCIcon = ({ size = 18, className = '' }) => (
+    <svg {...iconProps(size, className)}>
+        <circle cx="9" cy="9" r="7" />
+        <path d="M9 6v3l2 2" />
+    </svg>
+);
+
+export const PetitionIcon = ({ size = 18, className = '' }) => (
+    <svg {...iconProps(size, className)}>
+        <path d="M4 4h10a1 1 0 011 1v1H4V4z" />
+        <rect x="3" y="6" width="12" height="9" rx="1" />
+        <path d="M6 10h6M6 13h4" />
+    </svg>
+);
+
+export const MappingIcon = ({ size = 18, className = '' }) => (
+    <svg {...iconProps(size, className)}>
+        <rect x="2" y="3" width="5" height="5" rx="1" />
+        <rect x="11" y="3" width="5" height="5" rx="1" />
+        <rect x="2" y="11" width="5" height="5" rx="1" />
+        <rect x="11" y="11" width="5" height="5" rx="1" />
+        <path d="M7 5.5h4M7 13.5h4M4.5 8v3M13.5 8v3" />
+    </svg>
+);
+
+export const EquipmentIcon = ({ size = 18, className = '' }) => (
+    <svg {...iconProps(size, className)}>
+        <rect x="3" y="6" width="12" height="9" rx="1.5" />
+        <path d="M6 6V4.5a1 1 0 011-1h4a1 1 0 011 1V6" />
+        <path d="M3 10h12" />
+    </svg>
+);
+
+export const DocumentsIcon = ({ size = 18, className = '' }) => (
+    <svg {...iconProps(size, className)}>
+        <path d="M11 2H5a1 1 0 00-1 1v12a1 1 0 001 1h8a1 1 0 001-1V6l-3-4z" />
+        <path d="M11 2v4h4" />
+        <path d="M7 9h4M7 12h3" />
+    </svg>
+);
+
+export const OrgsIcon = ({ size = 18, className = '' }) => (
+    <svg {...iconProps(size, className)}>
+        <circle cx="9" cy="5" r="2" />
+        <circle cx="4" cy="13" r="2" />
+        <circle cx="14" cy="13" r="2" />
+        <path d="M9 7v2M7 12l-1.5-1.5M11 12l1.5-1.5M7 9H5M11 9h2" />
+    </svg>
+);
+
+export const CORIcon = ({ size = 18, className = '' }) => (
+    <svg {...iconProps(size, className)}>
+        <rect x="3" y="2" width="12" height="14" rx="2" />
+        <path d="M6 6h6M6 9h6M6 12h3" />
+        <circle cx="13" cy="13" r="3" fill="none" />
+        <path d="M11.8 13l.9.9 1.5-1.5" />
+    </svg>
+);
+
+export const HonorsIcon = ({ size = 18, className = '' }) => (
+    <svg {...iconProps(size, className)}>
+        <path d="M3 15h12M3 11l4-8 3 5 3-7 4 8" />
+        <rect x="3" y="12.5" width="12" height="2.8" rx="1.4" fill="currentColor" stroke="none" opacity="0.7"/>
+        <circle cx="7" cy="3" r="1.1" fill="currentColor" stroke="none"/>
+        <circle cx="13" cy="4" r="1.1" fill="currentColor" stroke="none"/>
+    </svg>
+);
+
+export const StudentRecordsIcon = ({ size = 18, className = '' }) => (
+    <svg {...iconProps(size, className)}>
+        <circle cx="7" cy="5.5" r="2.5" />
+        <path d="M2 15c0-2.8 2.2-5 5-5" />
+        <rect x="10" y="10" width="6" height="6" rx="1.5" />
+        <path d="M11.5 13h3M11.5 11.5h3" />
+    </svg>
+);
+
+// Document scan review — used for the HITL Verification Queue nav item
+export const ScanReviewIcon = ({ size = 18, className = '' }) => (
+    <svg {...iconProps(size, className)}>
+        <rect x="3" y="2" width="12" height="14" rx="2" />
+        <path d="M6 6h6M6 9h6M6 12h3" />
+        <circle cx="13.5" cy="13.5" r="3.5" fill="none" />
+        <path d="M12.2 13.5l1 1 2-2" />
+    </svg>
+);

@@ -15,13 +15,18 @@ const Toast = ({ message, type = 'success', onClose }) => {
   const icon = type === 'success' ? '✅' : '⚠️';
 
   return (
-    <div className={`fixed top-5 right-5 z-50 flex items-center gap-3 px-6 py-4 rounded-xl border backdrop-blur-md shadow-2xl animate-slide-in ${bgStyles}`}>
-      <span className="text-xl">{icon}</span>
+    <div
+      role={type === 'error' ? 'alert' : 'status'}
+      aria-live={type === 'error' ? 'assertive' : 'polite'}
+      aria-atomic="true"
+      className={`fixed top-5 right-5 z-[600] flex items-center gap-3 px-6 py-4 rounded-xl border backdrop-blur-md shadow-2xl animate-slide-in ${bgStyles}`}
+    >
+      <span className="text-xl" aria-hidden="true">{icon}</span>
       <div>
         <p className="font-bold text-sm uppercase tracking-wider">{type}</p>
         <p className="text-sm font-medium opacity-90">{message}</p>
       </div>
-      <button onClick={onClose} className="ml-4 hover:opacity-70">✕</button>
+      <button onClick={onClose} className="ml-4 hover:opacity-70" aria-label="Dismiss notification">✕</button>
     </div>
   );
 };

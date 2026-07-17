@@ -41,4 +41,14 @@ export const studentApi = {
     fetchFacultyTimeChunks: (facultyId, date) => apiClient.get(`/student/consultations/faculty/${facultyId}/available-slots?target_date=${date}`).then(r => r.data),
     bookConsultation: (data) => apiClient.post('/student/consultations/requests', data).then(r => r.data),
     fetchMyConsultations: () => apiClient.get('/student/consultations/requests').then(r => r.data),
+
+    // SE-04 — At-Risk Early Warning
+    fetchAtRisk: () => apiClient.get('/student/at-risk').then(r => r.data),
+
+    fetchMyOJTClearance: () => apiClient.get('/secretariat/ojt/my-status').then(r => r.data),
+    fetchMyEquipmentClearance: () => apiClient.get('/secretariat/equipment/clearance/my-status').then(r => r.data),
+
+    fetchNotifications: () => apiClient.get('/notifications/my').then(r => r.data),
+    markNotificationRead: (id) => apiClient.post(`/notifications/mark-read/${id}`).then(r => r.data),
+    markAllNotificationsRead: () => apiClient.post('/notifications/mark-all-read').then(r => r.data),
 };

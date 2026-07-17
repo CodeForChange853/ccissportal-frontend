@@ -10,6 +10,8 @@ const CorUploadTab = ({ onSuccess }) => {
     const [subjects, setSubjects] = useState(null);
     const [error, setError] = useState(null);
     const [confidence, setConfidence] = useState(null);
+    // needsReview: true when the scan is low-confidence and queued for secretariat verification
+    const [needsReview, setNeedsReview] = useState(false);
     const pollRef = useRef(null);
     const isSubmitting = useRef(false);
 
@@ -29,6 +31,7 @@ const CorUploadTab = ({ onSuccess }) => {
         if (!corFile || isSubmitting.current) return;
         isSubmitting.current = true;
         setScanning(true);
+        setNeedsReview(false);
         setStatus('Uploading…');
         try {
             const res = await studentApi.uploadCOR(corFile);
@@ -46,21 +49,49 @@ const CorUploadTab = ({ onSuccess }) => {
                 }
                 try {
                     const task = await studentApi.checkScanStatus(scanToken);
+                    const ps = task.processing_status;
 
-                    if (task.processing_status === 'ERROR' || task.status === 'ERROR') {
+                    if (ps === 'ERROR') {
                         clearInterval(pollRef.current);
                         setScanning(false);
                         isSubmitting.current = false;
-                        setCorFile(null);
-                        setCorPreview(null);
-                        setSubjects(null);
-                        setConfidence(null);
-                        setStatus('');
+                        setCorFile(null); setCorPreview(null);
+                        setSubjects(null); setConfidence(null); setStatus('');
                         setError('The AI service is currently busy. Please try uploading your document again in a few moments.');
                         return;
                     }
 
-                    if (task.processing_status === 'COMPLETED') {
+                    if (ps === 'FAILED') {
+                        clearInterval(pollRef.current);
+                        setScanning(false);
+                        isSubmitting.current = false;
+                        setError(task.error_message || 'AI scan failed. Please upload a clearer image.');
+                        return;
+                    }
+
+                    // ── NEEDS_REVIEW: low-confidence scan queued for secretariat ──
+                    // The student can still proceed — the registrar will verify subjects.
+                    if (ps === 'NEEDS_REVIEW') {
+                        clearInterval(pollRef.current);
+                        let subs = [];
+                        let confScore = null;
+                        try {
+                            const parsed = JSON.parse(task.extracted_ai_data || '{}');
+                            subs = (parsed.extracted_data?.subjects ?? []).filter(s =>
+                                s && (s.code || '').trim() && (s.name || '').trim()
+                            );
+                            confScore = parsed.confidence_score ?? null;
+                        } catch { subs = []; }
+                        setConfidence(confScore);
+                        setSubjects(subs);
+                        setNeedsReview(true);
+                        setStatus('Pending registrar review');
+                        setScanning(false);
+                        isSubmitting.current = false;
+                        return;
+                    }
+
+                    if (ps === 'COMPLETED' || ps === 'MANUALLY_VERIFIED') {
                         clearInterval(pollRef.current);
                         let subs = [];
                         let confScore = null;
@@ -68,7 +99,6 @@ const CorUploadTab = ({ onSuccess }) => {
                             const parsed = JSON.parse(task.extracted_ai_data || '{}');
                             const rawSubs = parsed.extracted_data?.subjects ?? [];
                             confScore = parsed.confidence_score ?? null;
-
                             subs = rawSubs.filter(s =>
                                 s && (s.code || '').trim() && (s.name || '').trim()
                             );
@@ -84,22 +114,12 @@ const CorUploadTab = ({ onSuccess }) => {
                             return;
                         }
 
-                        if (confScore !== null && confScore < 0.3) {
-                            setError('⚠️ Low scan quality detected. Results may be inaccurate — consider re-uploading a clearer image.');
-                        }
-
                         setSubjects(subs);
                         setStatus(`${subs.length} subjects found`);
                         setScanning(false);
                         isSubmitting.current = false;
-                    } else if (task.processing_status === 'FAILED') {
-                        clearInterval(pollRef.current);
-                        setScanning(false);
-                        isSubmitting.current = false;
-                        setSubjects([]);
-                        setError('AI scan failed. Please try a clearer image.');
                     }
-                } catch { }
+                } catch { /* ignore */ }
             }, 2000);
         } catch {
             setError('Upload failed. Please try again.');
@@ -131,6 +151,7 @@ const CorUploadTab = ({ onSuccess }) => {
         setSubjects(null);
         setStatus('');
         setError(null);
+        setNeedsReview(false);
         if (pollRef.current) clearInterval(pollRef.current);
     };
 
@@ -186,25 +207,58 @@ const CorUploadTab = ({ onSuccess }) => {
                     </div>
 
                     {subjects !== null && (
-                        <div className="p-6 border-t border-white/5 bg-student-gold-dim2">
-                            <p className="text-[11px] font-black mb-3 flex items-center gap-2" style={{ color: 'var(--student-gold)' }}>
-                                <span className="text-base">💎</span> AI EXTRACTION: {subjects.length} SUBJECTS FOUND
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                                {subjects.map((s, i) => (
-                                    <span
-                                        key={i}
-                                        className="text-[10px] font-mono px-3 py-1 rounded-lg font-bold"
-                                        style={{
-                                            background: 'var(--student-black-4)',
-                                            color: 'var(--student-gold-3)',
-                                            border: '1px solid rgba(201, 168, 76, 0.15)',
-                                        }}
-                                    >
-                                        {s.code}
-                                    </span>
-                                ))}
-                            </div>
+                        <div className="p-6 border-t border-white/5"
+                            style={{ background: needsReview ? 'rgba(217,119,6,0.08)' : 'var(--student-gold-dim2)' }}>
+
+                            {needsReview ? (
+                                /* Low-confidence scan — tell the student to wait, not re-upload */
+                                <div>
+                                    <p className="text-[11px] font-black mb-2 flex items-center gap-2"
+                                        style={{ color: '#f59e0b' }}>
+                                        <span className="text-base">⏳</span> PENDING REGISTRAR REVIEW
+                                    </p>
+                                    <p className="text-[10px] font-mono leading-relaxed"
+                                        style={{ color: 'rgba(245,240,232,0.65)' }}>
+                                        Your COR was uploaded but our AI had low confidence reading it.
+                                        A registrar will manually verify your subjects — you&apos;ll be notified.
+                                        You can submit now and we&apos;ll process your enrollment once verified.
+                                    </p>
+                                    {subjects.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 mt-3">
+                                            {subjects.map((s, i) => (
+                                                <span key={i} className="text-[10px] font-mono px-3 py-1 rounded-lg font-bold"
+                                                    style={{
+                                                        background: 'rgba(245,158,11,0.1)',
+                                                        color: '#f59e0b',
+                                                        border: '1px solid rgba(245,158,11,0.2)',
+                                                    }}>
+                                                    {s.code}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                /* High-confidence scan — show extracted subjects normally */
+                                <div>
+                                    <p className="text-[11px] font-black mb-3 flex items-center gap-2"
+                                        style={{ color: 'var(--student-gold)' }}>
+                                        <span className="text-base">💎</span> AI EXTRACTION: {subjects.length} SUBJECTS FOUND
+                                    </p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {subjects.map((s, i) => (
+                                            <span key={i} className="text-[10px] font-mono px-3 py-1 rounded-lg font-bold"
+                                                style={{
+                                                    background: 'var(--student-black-4)',
+                                                    color: 'var(--student-gold-3)',
+                                                    border: '1px solid rgba(201, 168, 76, 0.15)',
+                                                }}>
+                                                {s.code}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -225,7 +279,7 @@ const CorUploadTab = ({ onSuccess }) => {
                         onClick={submitCor}
                         disabled={scanning}
                         className="w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest text-white disabled:opacity-30 transition-all active:scale-95 shadow-[0_4px_20px_rgba(39,174,96,0.2)]"
-                        style={{ background: 'linear-gradient(135deg, var(--student-green), #16a34a)' }}
+                        style={{ background: 'linear-gradient(135deg, var(--student-green), var(--color-success))' }}
                     >
                         Submit Official COR
                     </button>

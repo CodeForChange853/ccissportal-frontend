@@ -1,0 +1,187 @@
+---
+NexEnroll — Full System Analysis & Remediation Plan
+
+System Summary
+
+Your system has 4 roles: ADMIN, SECRETARY, FACULTY, STUDENT. There is no "local admin / super admin" split — only a single ADMIN role exists. The backend is nearly complete; the frontend has meaningful gaps concentrated in the Faculty portal.
+
+---
+Role-by-Role Health Check
+
+STUDENT — Status: 90% Complete - DONE
+
+What works: COR upload → AI scan → enrollment submission, grades/GWA view, at-risk detection banner, consultation booking, support ticket submission.
+
+What's missing:
+- No student-facing view of OJT clearance status or equipment clearance status (both gating fields exist in StudentProfile but aren't surfaced in the portal)
+- No notification when enrollment is approved/rejected — student must manually check
+
+---
+FACULTY — Status: 30% Complete — CRITICAL GAP - DONE
+
+What works: Backend module is fully implemented.
+
+What's missing from the frontend:
+- No facultyApi.js file exists at all
+- No grade submission UI — faculty cannot enter or update student grades
+- No consultation slot management — faculty cannot create/edit availability
+- No view of assigned subjects or student rosters
+- No INC completion step — when a student's INC request is routed to faculty for grade submission, there is zero UI for the faculty to act on it
+
+This is the single largest gap in the entire system.
+
+---
+SECRETARY — Status: 95% Complete - TOPATCH
+
+What works: All 11 pages are built — OJT review, INC routing, petitions, mapping drafts, equipment inventory, document requests, facility/org management, COR release, and AI document verification queue.
+
+What needs verification:
+- The DocumentVerificationQueue page (HITL AI review) — usability and correction flow needs testing
+- SecretaryDashboard stat cards need to confirm they actually refresh counts from live data
+
+What's missing:
+- No UI to provision a new secretary account — the backend endpoint POST /authentication/provision-secretary exists (admin-only) but has no frontend form. Admins cannot create secretary accounts from within the portal.
+
+---
+ADMIN — Status: 85% Complete - TOPATCH
+
+What works: Full dashboard, enrollment approval, curriculum CRUD, faculty load assignment, user management, audit intelligence with AI narratives, enrollment forecasting, at-risk student listing, support ticket resolution, announcements, Wall of Shame.
+
+What's missing:
+- No secretary provisioning form (shared issue with Secretary above)
+- No grade write access — admins can only read grades; cannot override or correct records directly
+- Route-level role enforcement is not applied in App.jsx — ProtectedRoute supports a role prop but it's not set per route, so role gate is only at the page level
+
+---
+Prioritized Remediation Plan
+
+PRIORITY 1 — Critical (Blocks Core Operations)
+
+P1-A: Build the Faculty Portal - Patched Done
+
+The faculty role is non-functional from the frontend. Three sub-tasks:
+
+1. Create frontend/src/features/faculty/api/facultyApi.js — expose endpoints for: load/subjects, gradebook, consultation slots, INC completion queue, triage alerts
+2. Build GradebookTab.jsx — show assigned subjects → click into roster → enter/update grades (midterm, final) with override reason
+3. Build ConsultationSlotsTab.jsx — CRUD for faculty availability slots
+4. Build INCQueueTab.jsx — show completion requests routed to this faculty member, submit resolved final grade
+
+Start here. Without this, faculty cannot do their core job.
+
+---
+P1-B: Add Secretary Provisioning UI in Admin Portal-patched done
+
+Currently no admin can create a secretary account from the portal. Add a form to CommandCenter.jsx or ManageUsers.jsx:
+- Field: email, full name, password
+- Calls POST /authentication/provision-secretary
+- Scoped behind admin session
+
+---
+PRIORITY 2 — High (Workflow Integrity)- Patche Done
+
+P2-A: Surface Student Clearance Statuses
+
+StudentProfile has two clearance fields — ojt_clearance_status and equipment_clearance_status — but they are invisible to the student. Add a "Clearance" section to StudentDashboard or inside GradesTab showing:
+- OJT clearance: PENDING / CLEARED / BLOCKED
+- Equipment clearance: CLEARED / UNCLEARED
+- Link to submit OJT docs if not yet submitted
+
+---
+P2-B: Enforce Route-Level Role Checks in App.jsx
+
+ProtectedRoute already accepts a role prop but it's unused in route definitions. Pass the correct role per route so that:
+- /portal/admin/* → only ADMIN
+- /portal/faculty/* → only FACULTY
+- /portal/secretary/* → only SECRETARY or ADMIN
+- /portal/student/* → only STUDENT  
+
+This prevents users who manually type a URL from reaching another role's portal.
+
+---
+P2-C: Verify INC Completion Workflow End-to-End
+
+The 4-step INC state machine (PENDING_FEE → ROUTED_TO_FACULTY → AWAITING_ADMIN_POSTING → POSTED) crosses three actors: Secretary, Faculty, Admin. Test the full flow:
+1. Student submits completion request ✅
+2. Secretary advances to ROUTED_TO_FACULTY ✅ (UI exists)
+3. Faculty submits resolved grade ❌ (no UI — blocked by P1-A)
+4. Admin posts grade to gradebook ✅ (UI needs verification)
+
+This cannot be completed until P1-A is done.
+
+---
+PRIORITY 3 — Medium (Security Hardening)
+
+P3-A: Add Rate Limiting to Auth Endpoints
+
+The login and register endpoints have no rate limiting. This is a brute-force vulnerability. Add slowapi (FastAPI rate limiter) to backend-v2/src/modules/auth/router.py:
+- Login: max 10 requests/minute per IP
+- Register: max 5 requests/minute per IP
+
+---
+P3-B: Implement Refresh Token Rotation
+
+Currently a single 24h JWT is issued. A stolen token is valid for the full window. The fix:
+- Issue short-lived access tokens (15–30 min)
+- Issue a rotating refresh token (stored HTTP-only cookie)
+- Add POST /authentication/refresh endpoint
+
+This is the most impactful auth security change.
+
+---
+P3-C: Add HTTP Security Headers
+
+The backend has no security middleware for CSP, HSTS, X-Frame-Options, or X-Content-Type-Options. Add a SecurityHeadersMiddleware in backend-v2/src/main.py.
+
+---
+P3-D: Password Strength Enforcement
+
+Registration currently accepts any password. Add validation in auth/schemas.py (Pydantic validator) and mirror in the frontend registration form: minimum 8 characters, must include uppercase, number, and special character.
+
+---
+PRIORITY 4 — Medium (Operational Transparency)
+
+P4-A: Real-Time Enrollment Status for Students
+
+Students must manually check enrollment status. Add Server-Sent Events (SSE) or polling with toast notification so the student sees "Your enrollment was approved" within 5 minutes of the admin decision — without a page refresh.
+
+---
+P4-B: Implement Notifications Module
+
+The backend-v2/src/modules/notifications/ module has only a router.py stub — no models, schemas, service, or repository. Implement it or remove it. If implemented, it can power P4-A and future in-portal notification banners.
+
+---
+P4-C: Data Export for Admin
+
+Add CSV export to enrollment reports and gradebook data in the admin portal. This is a common institutional reporting need.
+
+---
+PRIORITY 5 — Low (Polish & Compliance)
+
+P5-A: Theming Consistency Audit
+
+Some student portal components use hardcoded color values (e.g., GWABlock.jsx). A token audit and replacement with CSS variables from index.css ensures proper dark/light mode behavior.
+
+---
+P5-B: Accessibility Pass (WCAG 2.1 AA)
+
+The UI component library (CyberPanel, StatusBadge, etc.) lacks ARIA roles and keyboard navigation. Add role, aria-label, and focus management to shared primitives.
+
+---
+P5-C: File Upload Security Hardening
+
+Beyond current MIME + size validation:
+- Re-verify MIME server-side (don't trust Content-Type header)
+- Store uploaded files outside the web-accessible directory
+- Log upload attempts in the audit trail
+
+---
+Where to Start — Execution Order
+
+Week 1:  P1-A (Faculty Portal — 4 components)
+Week 2:  P1-B (Secretary provisioning UI) + P2-B (route-level role enforcement)
+Week 3:  P2-A (student clearance statuses) + P2-C (verify INC workflow end-to-end)
+Week 4:  P3-A (rate limiting) + P3-D (password strength)
+Week 5:  P3-B (refresh tokens) + P3-C (security headers)
+Week 6+: P4-A/B/C then P5-A/B/C
+
+The Faculty Portal (P1-A) is the non-negotiable first target — it blocks the INC completion workflow, leaves a full user class with a non-functional portal, and is the widest gap between backend completeness and frontend delivery.

@@ -18,8 +18,8 @@ import { USER_ROLE_VARIANT } from '../../../constants/statusVariants';
 
 import { KeyIcon, ShieldIcon, UsersIcon, FacultyIcon, EnrollmentsIcon, LoadIcon } from '../../../components/icons';
 
-const ROLES = ['ALL', 'STUDENT', 'FACULTY', 'ADMIN'];
-const CREATABLE_ROLES = ['FACULTY', 'ADMIN'];  // STUDENT created via AdminAdmissions only
+const ROLES = ['ALL', 'STUDENT', 'FACULTY', 'ADMIN', 'SECRETARY'];
+const CREATABLE_ROLES = ['FACULTY', 'ADMIN', 'SECRETARY'];  // STUDENT created via AdminAdmissions only
 const PAGE_SIZE = 25;
 
 // ✅ Using shared USER_ROLE_VARIANT — local ROLE_VARIANT removed
@@ -101,6 +101,7 @@ const ManageUsers = () => {
         STUDENT: allUsers.filter(u => u.account_role === 'STUDENT').length,
         FACULTY: allUsers.filter(u => u.account_role === 'FACULTY').length,
         ADMIN: allUsers.filter(u => u.account_role === 'ADMIN').length,
+        SECRETARY: allUsers.filter(u => u.account_role === 'SECRETARY').length,
     }), [allUsers]);
 
     const toggleActive = useCallback(async (user) => {
@@ -118,7 +119,11 @@ const ManageUsers = () => {
     const handleCreateUser = async (e) => {
         e.preventDefault(); setCreating(true);
         try {
-            await adminApi.createUser(newUser);
+            if (newUser.account_role === 'SECRETARY') {
+                await adminApi.provisionSecretary(newUser);
+            } else {
+                await adminApi.createUser(newUser);
+            }
             setShowCreate(false);
             setNewUser({ email_address: '', plain_text_password: '', account_role: 'FACULTY', first_name: '', last_name: '', employee_id: '', academic_department: '' });
             toast.success(`Account created for ${newUser.email_address}.`);
@@ -150,11 +155,10 @@ const ManageUsers = () => {
 
             {/* ✅ Shared PageHeader — dynamic subtitle shows live counts */}
             <PageHeader
-                title="User Registry"
-                subtitle={`${counts.ALL} accounts — ${counts.STUDENT} students · ${counts.FACULTY} faculty · ${counts.ADMIN} admins`}
+                subtitle={`${counts.ALL} accounts — ${counts.STUDENT} students · ${counts.FACULTY} faculty · ${counts.ADMIN} admins · ${counts.SECRETARY} secretaries`}
                 badge={
                     <button className={showCreate ? 'btn-ghost' : 'btn-primary'} onClick={() => setShowCreate(v => !v)}>
-                        {showCreate ? 'CANCEL' : '+ NEW FACULTY / ADMIN'}
+                        {showCreate ? 'CANCEL' : '+ NEW ACCOUNT'}
                     </button>
                 }
             />
@@ -205,16 +209,32 @@ const ManageUsers = () => {
                             </div>
                         </div>
 
-                        <div><label style={{ ...T.label, color: 'rgba(255,255,255,0.4)' }}>Temporary Password</label>{field('plain_text_password', '••••••••', 'password')}</div>
+                        <div>
+                            <label style={{ ...T.label, color: 'rgba(255,255,255,0.4)' }}>Temporary Password</label>
+                            {field('plain_text_password', '••••••••', 'password')}
+                            <p style={{ fontFamily: 'var(--font-terminal)', fontSize: '0.58rem', color: 'rgba(255,255,255,0.25)', marginTop: 5, letterSpacing: '0.04em' }}>
+                                8+ chars · uppercase · number · special character
+                            </p>
+                        </div>
 
                         {newUser.account_role === 'FACULTY' && (
-                            <div style={{ 
+                            <div style={{
                                 display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16,
                                 padding: 20, background: 'rgba(255,255,255,0.03)', borderRadius: 16,
                                 border: '1px solid rgba(255,255,255,0.05)'
                             }}>
                                 <div><label style={{ ...T.label, color: 'rgba(255,255,255,0.4)' }}>Employee ID</label>{field('employee_id', 'FAC-XXX')}</div>
                                 <div><label style={{ ...T.label, color: 'rgba(255,255,255,0.4)' }}>Department</label>{field('academic_department', 'CS Department')}</div>
+                            </div>
+                        )}
+                        {newUser.account_role === 'SECRETARY' && (
+                            <div style={{
+                                padding: 16, background: 'rgba(186,151,49,0.07)', borderRadius: 16,
+                                border: '1px solid rgba(186,151,49,0.2)',
+                                fontFamily: 'var(--font-terminal)', fontSize: '0.68rem',
+                                color: 'rgba(255,255,255,0.5)', letterSpacing: '0.05em'
+                            }}>
+                                SECRETARY accounts have access to the secretariat operations portal. No additional profile setup required.
                             </div>
                         )}
 

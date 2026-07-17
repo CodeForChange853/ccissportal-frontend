@@ -1,7 +1,7 @@
 import React from 'react';
-import { useAuth } from '../../../context/AuthContext';
+import { useAuth } from '../../../auth/AuthContext';
 import {
-    LoadIcon, GradebookIcon, ProfileIcon, UsersIcon
+    LoadIcon, GradebookIcon, ProfileIcon, UsersIcon, INCIcon
 } from '../../../components/icons';
 import PortalLayout from '../../../components/layout/PortalLayout';
 
@@ -12,6 +12,7 @@ export const FACULTY_NAV = [
             { id: 'load', label: 'My Load', Icon: LoadIcon, path: 'load' },
             { id: 'gradebook', label: 'Gradebook', Icon: GradebookIcon, path: 'gradebook' },
             { id: 'consultations', label: 'Consultations', Icon: UsersIcon, path: 'consultations' },
+            { id: 'inc-queue', label: 'INC Queue', Icon: INCIcon, path: 'inc-queue' },
         ],
     },
     {

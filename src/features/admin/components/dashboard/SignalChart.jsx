@@ -13,6 +13,7 @@ const CHART_OPTIONS = {
     responsive: true,
     maintainAspectRatio: false,
     animation: { duration: 400 },
+    interaction: { mode: 'index', intersect: false },
     elements: {
         point: { radius: 2.5, hoverRadius: 5, borderWidth: 1.5 },
         line: { tension: 0.35, borderWidth: 1.8 },
