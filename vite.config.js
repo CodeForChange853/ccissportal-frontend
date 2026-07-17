@@ -34,6 +34,7 @@ export default defineConfig({
         ],
       },
       workbox: {
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB
         // Cache the app shell (HTML) with network-first so updates deploy immediately
         navigateFallback: '/index.html',
 
